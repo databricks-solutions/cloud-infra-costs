@@ -91,7 +91,7 @@
         ")\n",
         "\n",
         "SELECT\n",
-        "  time_key, meterCategory, custom_tag_key_value_pairs, price\n",
+        "  time_key, meterName, meterSubCategory, meterCategory, vendor, custom_tag_key_value_pairs, price\n",
         "FROM usage_with_matching_tag_kvp"
       ],
       "parameters": [
@@ -310,7 +310,7 @@
             }
           },
           "position": {
-            "x": 0,
+            "x": 3,
             "y": 0,
             "width": 3,
             "height": 1
@@ -318,19 +318,19 @@
         },
         {
           "widget": {
-            "name": "4220359d",
+            "name": "adc6f62d",
             "queries": [
               {
-                "name": "dashboards/01f0ac6b8fb41077a3a57223e5203976/datasets/01f0ac6ca8d9172db91fe421be41298e_parsedTags",
+                "name": "dashboards/01f0ac6b8fb41077a3a57223e5203976/datasets/01f0ac6ca8d9172db91fe421be41298e_meterName",
                 "query": {
                   "datasetName": "ae7776ee",
                   "fields": [
                     {
-                      "name": "parsedTags",
-                      "expression": "`parsedTags`"
+                      "name": "meterName",
+                      "expression": "`meterName`"
                     },
                     {
-                      "name": "parsedTags_associativity",
+                      "name": "meterName_associativity",
                       "expression": "COUNT_IF(`associative_filter_predicate_group`)"
                     }
                   ],
@@ -344,19 +344,19 @@
               "encodings": {
                 "fields": [
                   {
-                    "fieldName": "parsedTags",
-                    "queryName": "dashboards/01f0ac6b8fb41077a3a57223e5203976/datasets/01f0ac6ca8d9172db91fe421be41298e_parsedTags"
+                    "fieldName": "meterName",
+                    "queryName": "dashboards/01f0ac6b8fb41077a3a57223e5203976/datasets/01f0ac6ca8d9172db91fe421be41298e_meterName"
                   }
                 ]
               },
               "frame": {
                 "showTitle": true,
-                "title": "Tags"
+                "title": "Meter Name"
               }
             }
           },
           "position": {
-            "x": 3,
+            "x": 0,
             "y": 0,
             "width": 3,
             "height": 1
@@ -893,6 +893,94 @@
           "position": {
             "x": 0,
             "y": 2,
+            "width": 1,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "fb814553",
+            "queries": [
+              {
+                "name": "dashboards/01f0ac6b8fb41077a3a57223e5203976/datasets/01f0ac6ca8d9172db91fe421be41298e_vendor",
+                "query": {
+                  "datasetName": "ae7776ee",
+                  "fields": [
+                    {
+                      "name": "vendor",
+                      "expression": "`vendor`"
+                    },
+                    {
+                      "name": "vendor_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "dashboards/01f0ac6b8fb41077a3a57223e5203976/datasets/01f0ac6b8fb4190a990edd017b096c66_vendor",
+                "query": {
+                  "datasetName": "0ae67941",
+                  "fields": [
+                    {
+                      "name": "vendor",
+                      "expression": "`vendor`"
+                    },
+                    {
+                      "name": "vendor_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "dashboards/01f0ac6b8fb41077a3a57223e5203976/datasets/01f0ad345aa31caf8ae61826823ffa8d_vendor",
+                "query": {
+                  "datasetName": "538a5330",
+                  "fields": [
+                    {
+                      "name": "vendor",
+                      "expression": "`vendor`"
+                    },
+                    {
+                      "name": "vendor_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-single-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "vendor",
+                    "queryName": "dashboards/01f0ac6b8fb41077a3a57223e5203976/datasets/01f0ac6ca8d9172db91fe421be41298e_vendor"
+                  },
+                  {
+                    "fieldName": "vendor",
+                    "queryName": "dashboards/01f0ac6b8fb41077a3a57223e5203976/datasets/01f0ac6b8fb4190a990edd017b096c66_vendor"
+                  },
+                  {
+                    "fieldName": "vendor",
+                    "queryName": "dashboards/01f0ac6b8fb41077a3a57223e5203976/datasets/01f0ad345aa31caf8ae61826823ffa8d_vendor"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Vendor"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 4,
             "width": 1,
             "height": 2
           }
