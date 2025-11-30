@@ -2,6 +2,9 @@
 
 The 'aws_cost' project's purpose is to help enable customers to get TCO of their Databricks implementation including AWS infrastructure costs.  This then allows for using Databricks native tooling to process, vizualize, and augment the cost data with data in Databricks System Tables. The accelerator allows for users to visualize the different types of AWS Cost (Unblended, Net Unblended, Amortized, Net Amortized).
 
+<img width="1698" height="842" alt="image" src="https://github.com/user-attachments/assets/0b8751a3-25fe-4a41-8abe-e69cc95baa26" />
+
+
 ## Key Outcomes:
 - AWS cost data including infrastructure, networking, and other costs in addition to Databricks costs.
 - Includes any discounts a customer might have given their enterprise agreement with Amazon

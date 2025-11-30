@@ -2,6 +2,8 @@
 
 The 'azure_cost' project's purpose is to help enable customers to get a full TCO of their Azure cost data into Databricks.  This then allows for using Databricks native tooling to process, vizualize, and augment the cost data with data in Databricks System Tables.
 
+<img width="1444" height="653" alt="Screenshot 2025-11-05 at 10 58 37 AM" src="https://github.com/user-attachments/assets/611b8cf5-cf23-4c98-84a9-eab3776669fe" />
+
 ## Key Outcomes:
 - Vizualize Azure cost data including infrastructure, networking, and other costs in addition to Databricks costs.
 - Includes any discounts a customer might have given their enterprise agreement with Microsoft

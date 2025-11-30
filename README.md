@@ -7,6 +7,9 @@ The solution is broken down into two pieces.  One for Azure Databricks customers
 - [Azure](azure/README.md)
 - [AWS](aws/README.md)
 
+<img width="1444" height="653" alt="Screenshot 2025-11-05 at 10 58 37 AM" src="https://github.com/user-attachments/assets/611b8cf5-cf23-4c98-84a9-eab3776669fe" />
+
+
 ## How to get help
 
 Databricks support doesn't cover this content. For questions or bugs, please open a GitHub issue and the team will help on a best effort basis.
