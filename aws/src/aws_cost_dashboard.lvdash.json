@@ -138,7 +138,7 @@
         "      WHEN :cloud_cost_type = 'Net Amortized' THEN net_amortized_cost\n",
         "      ELSE 0\n",
         "    END,0)) AS total_cloud_cost_dollars\n",
-        " FROM billing.aws.aws_cost_and_usage_gold\n",
+        " FROM IDENTIFIER(:gold_table)\n",
         " GROUP BY ALL\n",
         ")\n",
         "-- join them together and get total cost\n",
@@ -280,6 +280,21 @@
               "values": [
                 {
                   "value": "system.billing.list_prices"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "gold_table",
+          "keyword": "gold_table",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "billing.aws.aws_cost_and_usage_gold"
                 }
               ]
             }
