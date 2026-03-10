@@ -21,3 +21,7 @@ Databricks support doesn't cover this content. For questions or bugs, please ope
 
 | library                                | description             | license    | source                                              |
 |----------------------------------------|-------------------------|------------|-----------------------------------------------------|
+| HashiCorp Terraform                    | Infrastructure as code tool | [BUSL 1.1](https://www.hashicorp.com/bsl)   | https://github.com/hashicorp/terraform              |
+| hashicorp/azurerm Terraform provider   | Azure Resource Manager provider for Terraform | [MPL 2.0](https://www.mozilla.org/en-US/MPL/2.0/)    | https://github.com/hashicorp/terraform-provider-azurerm |
+| databricks/databricks Terraform provider | Databricks provider for Terraform | [Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0) | https://github.com/databricks/terraform-provider-databricks |
+| Apache Spark (PySpark)                 | Distributed data processing engine (runtime dependency) | [Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0) | https://github.com/apache/spark                     |
