@@ -1,0 +1,19 @@
+resources:
+  pipelines:
+    azure_focus_pipeline:
+      name: azure_focus_pipeline
+      catalog: ${var.catalog}
+      schema: ${var.schema}
+      serverless: true
+      libraries:
+        - notebook:
+            path: ../src/azure_focus_pipeline.ipynb
+
+      configuration:
+        bundle.sourcePath: ${workspace.file_path}/src
+        source_file_path: ${var.focus_source_file_path}
+        bronze_table_name: ${var.focus_bronze_table_name}
+        silver_table_name: ${var.focus_silver_table_name}
+        gold_table_name: ${var.focus_gold_table_name}
+        billing_period_depth: ${var.focus_billing_period_depth}
+        ingestion_date_depth: ${var.focus_ingestion_date_depth}

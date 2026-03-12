@@ -5,7 +5,7 @@ resources:
 
       trigger:
         file_arrival:
-          url: ${var.volume_path}
+          url: ${var.volume_path}azure-actual-cost/
 
       tasks:
         - task_key: refresh_pipeline

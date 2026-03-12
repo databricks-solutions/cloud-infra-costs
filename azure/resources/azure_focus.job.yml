@@ -1,0 +1,14 @@
+resources:
+  jobs:
+    azure_focus_job:
+      name: azure_focus_job
+
+      trigger:
+        file_arrival:
+          url: ${var.volume_path}azure-focus-cost/
+        pause_status: PAUSED
+
+      tasks:
+        - task_key: refresh_pipeline
+          pipeline_task:
+            pipeline_id: ${resources.pipelines.azure_focus_pipeline.id}

@@ -31,7 +31,7 @@ variables:
     default: /Volumes/${var.catalog}/${var.schema}/${var.volume_name}/
   source_file_path:
     description: "Location in Volume where AutoLoader is reading Cost Export files from"
-    default: ${var.volume_path}*/*/*/*/*.parquet
+    default: ${var.volume_path}azure-actual-cost/*/*/*/*.parquet
   billing_period_depth:
     description: "Pipeline uses split_part to extract billing period (e.g. 20250901-20250930) from file source_file_path"
     default: 7    
@@ -41,9 +41,49 @@ variables:
   warehouse_id:
     description: "Id of SQL warehouse that the dashboard uses"
 
+  # Amortized pipeline variables
+  amortized_bronze_table_name:
+    description: "Name of amortized bronze table"
+    default: amortized_bronze
+  amortized_silver_table_name:
+    description: "Name of amortized silver table"
+    default: amortized_silver
+  amortized_gold_table_name:
+    description: "Name of amortized gold table"
+    default: amortized_gold
+  amortized_source_file_path:
+    description: "Location in Volume where AutoLoader is reading Amortized Cost Export files from"
+    default: ${var.volume_path}azure-amortized-cost/*/*/*/*.parquet
+  amortized_billing_period_depth:
+    description: "split_part depth for billing period in amortized file paths"
+    default: 7
+  amortized_ingestion_date_depth:
+    description: "split_part depth for ingestion date in amortized file paths"
+    default: 8
+
+  # FOCUS pipeline variables
+  focus_bronze_table_name:
+    description: "Name of FOCUS bronze table"
+    default: focus_bronze
+  focus_silver_table_name:
+    description: "Name of FOCUS silver table"
+    default: focus_silver
+  focus_gold_table_name:
+    description: "Name of FOCUS gold table"
+    default: focus_gold
+  focus_source_file_path:
+    description: "Location in Volume where AutoLoader is reading FOCUS Cost Export files from"
+    default: ${var.volume_path}azure-focus-cost/*/*/*/*.parquet
+  focus_billing_period_depth:
+    description: "split_part depth for billing period in FOCUS file paths"
+    default: 7
+  focus_ingestion_date_depth:
+    description: "split_part depth for ingestion date in FOCUS file paths"
+    default: 8
+
 targets:
   dev:
     mode: development
     default: true
     variables:
-      warehouse_id: "198366aeeb34f3bb"
+      warehouse_id: "095518321a584a65"

@@ -1,0 +1,907 @@
+{
+  "datasets": [
+    {
+      "name": "fc01a1a1",
+      "displayName": "FOCUS Cost",
+      "queryLines": [
+        "SELECT *\n",
+        "FROM billing.azure.focus_gold"
+      ]
+    },
+    {
+      "name": "fc02b2b2",
+      "displayName": "FOCUS Resource Detail",
+      "queryLines": [
+        "SELECT *\n",
+        "FROM billing.azure.focus_gold"
+      ]
+    }
+  ],
+  "pages": [
+    {
+      "name": "pg01focu",
+      "displayName": "Cost Overview",
+      "layout": [
+        {
+          "widget": {
+            "name": "fw01txt1",
+            "multilineTextboxSpec": {
+              "lines": [
+                "<span style=\"font-size:24px;font-family:Tahoma\">**Azure FOCUS Cost Overview**</span>\n",
+                "\n",
+                "- <span style=\"font-size:12px;font-family:Tahoma\">This dashboard displays Azure costs in the FOCUS (FinOps Open Cost and Usage Specification) format</span>\n",
+                "- <span style=\"font-size:12px;font-family:Tahoma\">Use filters to drill into specific services, subscriptions, regions, and charge categories</span>"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 6,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "fw02cntr",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "fc01a1a1",
+                  "fields": [
+                    {
+                      "name": "sum(BilledCost)",
+                      "expression": "SUM(`BilledCost`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(BilledCost)"
+                }
+              },
+              "frame": {
+                "title": "Total Billed Cost",
+                "showTitle": true
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 2,
+            "width": 2,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "fw02cnt2",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "fc01a1a1",
+                  "fields": [
+                    {
+                      "name": "sum(EffectiveCost)",
+                      "expression": "SUM(`EffectiveCost`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(EffectiveCost)"
+                }
+              },
+              "frame": {
+                "title": "Total Effective Cost",
+                "showTitle": true
+              }
+            }
+          },
+          "position": {
+            "x": 2,
+            "y": 2,
+            "width": 2,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "fw02cnt3",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "fc01a1a1",
+                  "fields": [
+                    {
+                      "name": "sum(ListCost)",
+                      "expression": "SUM(`ListCost`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(ListCost)"
+                }
+              },
+              "frame": {
+                "title": "Total List Cost",
+                "showTitle": true
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 2,
+            "width": 2,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "fw03flt1",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "fc01a1a1",
+                  "fields": [
+                    {
+                      "name": "ServiceCategory",
+                      "expression": "`ServiceCategory`"
+                    },
+                    {
+                      "name": "ServiceCategory_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-single-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "ServiceCategory",
+                    "queryName": "main_query"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Service Category"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 4,
+            "width": 2,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "fw03flt2",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "fc01a1a1",
+                  "fields": [
+                    {
+                      "name": "SubAccountName",
+                      "expression": "`SubAccountName`"
+                    },
+                    {
+                      "name": "SubAccountName_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-single-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "SubAccountName",
+                    "queryName": "main_query"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Subscription"
+              }
+            }
+          },
+          "position": {
+            "x": 2,
+            "y": 4,
+            "width": 2,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "fw03flt3",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "fc01a1a1",
+                  "fields": [
+                    {
+                      "name": "RegionName",
+                      "expression": "`RegionName`"
+                    },
+                    {
+                      "name": "RegionName_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-single-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "RegionName",
+                    "queryName": "main_query"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Region"
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 4,
+            "width": 1,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "fw03flt4",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "fc01a1a1",
+                  "fields": [
+                    {
+                      "name": "ChargeCategory",
+                      "expression": "`ChargeCategory`"
+                    },
+                    {
+                      "name": "ChargeCategory_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-single-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "ChargeCategory",
+                    "queryName": "main_query"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Charge Category"
+              }
+            }
+          },
+          "position": {
+            "x": 5,
+            "y": 4,
+            "width": 1,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "fw04bar1",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "fc01a1a1",
+                  "fields": [
+                    {
+                      "name": "ServiceCategory",
+                      "expression": "`ServiceCategory`"
+                    },
+                    {
+                      "name": "daily(ChargePeriodStart)",
+                      "expression": "DATE_TRUNC(\"DAY\", `ChargePeriodStart`)"
+                    },
+                    {
+                      "name": "sum(BilledCost)",
+                      "expression": "SUM(`BilledCost`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "daily(ChargePeriodStart)",
+                  "scale": {
+                    "type": "temporal"
+                  },
+                  "axis": {
+                    "title": "Charge Period Start"
+                  }
+                },
+                "y": {
+                  "fieldName": "sum(BilledCost)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "axis": {
+                    "title": "Billed Cost"
+                  }
+                },
+                "color": {
+                  "fieldName": "ServiceCategory",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "legend": {
+                    "title": "Service Category"
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Daily Billed Cost by Service Category"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 5,
+            "width": 6,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "fw05tbl1",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "fc01a1a1",
+                  "fields": [
+                    {
+                      "name": "ServiceName",
+                      "expression": "`ServiceName`"
+                    },
+                    {
+                      "name": "sum(BilledCost)",
+                      "expression": "SUM(`BilledCost`)"
+                    },
+                    {
+                      "name": "sum(EffectiveCost)",
+                      "expression": "SUM(`EffectiveCost`)"
+                    },
+                    {
+                      "name": "sum(ListCost)",
+                      "expression": "SUM(`ListCost`)"
+                    }
+                  ],
+                  "disaggregated": false,
+                  "orders": [
+                    {
+                      "direction": "DESC",
+                      "expression": "SUM(`BilledCost`)"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "ServiceName",
+                    "displayName": "Service Name"
+                  },
+                  {
+                    "fieldName": "sum(BilledCost)",
+                    "displayName": "Billed Cost"
+                  },
+                  {
+                    "fieldName": "sum(EffectiveCost)",
+                    "displayName": "Effective Cost"
+                  },
+                  {
+                    "fieldName": "sum(ListCost)",
+                    "displayName": "List Cost"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Top Costs by Service Name"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 11,
+            "width": 4,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "fw06pie1",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "fc01a1a1",
+                  "fields": [
+                    {
+                      "name": "ChargeCategory",
+                      "expression": "`ChargeCategory`"
+                    },
+                    {
+                      "name": "sum(BilledCost)",
+                      "expression": "SUM(`BilledCost`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "pie",
+              "encodings": {
+                "angle": {
+                  "fieldName": "sum(BilledCost)",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "color": {
+                  "fieldName": "ChargeCategory",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "legend": {
+                    "title": "Charge Category"
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Billed Cost by Charge Category"
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 11,
+            "width": 2,
+            "height": 6
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_CANVAS"
+    },
+    {
+      "name": "pg02rsrc",
+      "displayName": "Resource Analysis",
+      "layout": [
+        {
+          "widget": {
+            "name": "fw07txt2",
+            "multilineTextboxSpec": {
+              "lines": [
+                "<span style=\"font-size:24px;font-family:Tahoma\">**Resource Analysis**</span>\n",
+                "\n",
+                "- <span style=\"font-size:12px;font-family:Tahoma\">Analyze costs by resource type, resource name, subscription, and region</span>"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 6,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "fw08flt5",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "fc02b2b2",
+                  "fields": [
+                    {
+                      "name": "ServiceName",
+                      "expression": "`ServiceName`"
+                    },
+                    {
+                      "name": "ServiceName_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-single-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "ServiceName",
+                    "queryName": "main_query"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Service Name"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 2,
+            "width": 3,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "fw08flt6",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "fc02b2b2",
+                  "fields": [
+                    {
+                      "name": "ResourceType",
+                      "expression": "`ResourceType`"
+                    },
+                    {
+                      "name": "ResourceType_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-single-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "ResourceType",
+                    "queryName": "main_query"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Resource Type"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 2,
+            "width": 3,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "fw09tbl2",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "fc02b2b2",
+                  "fields": [
+                    {
+                      "name": "ResourceType",
+                      "expression": "`ResourceType`"
+                    },
+                    {
+                      "name": "ResourceName",
+                      "expression": "`ResourceName`"
+                    },
+                    {
+                      "name": "ServiceName",
+                      "expression": "`ServiceName`"
+                    },
+                    {
+                      "name": "sum(BilledCost)",
+                      "expression": "SUM(`BilledCost`)"
+                    },
+                    {
+                      "name": "sum(EffectiveCost)",
+                      "expression": "SUM(`EffectiveCost`)"
+                    },
+                    {
+                      "name": "sum(ListCost)",
+                      "expression": "SUM(`ListCost`)"
+                    }
+                  ],
+                  "disaggregated": false,
+                  "orders": [
+                    {
+                      "direction": "DESC",
+                      "expression": "SUM(`BilledCost`)"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "ResourceType",
+                    "displayName": "Resource Type"
+                  },
+                  {
+                    "fieldName": "ResourceName",
+                    "displayName": "Resource Name"
+                  },
+                  {
+                    "fieldName": "ServiceName",
+                    "displayName": "Service Name"
+                  },
+                  {
+                    "fieldName": "sum(BilledCost)",
+                    "displayName": "Billed Cost"
+                  },
+                  {
+                    "fieldName": "sum(EffectiveCost)",
+                    "displayName": "Effective Cost"
+                  },
+                  {
+                    "fieldName": "sum(ListCost)",
+                    "displayName": "List Cost"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Cost by Resource Type and Name"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 3,
+            "width": 6,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "fw10bar2",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "fc01a1a1",
+                  "fields": [
+                    {
+                      "name": "SubAccountName",
+                      "expression": "`SubAccountName`"
+                    },
+                    {
+                      "name": "sum(BilledCost)",
+                      "expression": "SUM(`BilledCost`)"
+                    }
+                  ],
+                  "disaggregated": false,
+                  "orders": [
+                    {
+                      "direction": "DESC",
+                      "expression": "SUM(`BilledCost`)"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "SubAccountName",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "axis": {
+                    "title": "Subscription"
+                  }
+                },
+                "y": {
+                  "fieldName": "sum(BilledCost)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "axis": {
+                    "title": "Billed Cost"
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Billed Cost by Subscription"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 9,
+            "width": 3,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "fw11bar3",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "fc01a1a1",
+                  "fields": [
+                    {
+                      "name": "RegionName",
+                      "expression": "`RegionName`"
+                    },
+                    {
+                      "name": "sum(BilledCost)",
+                      "expression": "SUM(`BilledCost`)"
+                    }
+                  ],
+                  "disaggregated": false,
+                  "orders": [
+                    {
+                      "direction": "DESC",
+                      "expression": "SUM(`BilledCost`)"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "RegionName",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "axis": {
+                    "title": "Region"
+                  }
+                },
+                "y": {
+                  "fieldName": "sum(BilledCost)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "axis": {
+                    "title": "Billed Cost"
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Billed Cost by Region"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 9,
+            "width": 3,
+            "height": 6
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_CANVAS"
+    }
+  ],
+  "uiSettings": {
+    "theme": {
+      "canvasBackgroundColor": {
+        "light": "#FFFFFF",
+        "dark": "#1F272D"
+      },
+      "widgetBackgroundColor": {
+        "light": "#FFFFFF",
+        "dark": "#11171C"
+      },
+      "widgetBorderColor": {
+        "light": "#000000"
+      },
+      "fontColor": {
+        "light": "#000000",
+        "dark": "#E8ECF0"
+      },
+      "selectionColor": {
+        "light": "#FF00FF",
+        "dark": "#8ACAFF"
+      },
+      "widgetHeaderAlignment": "LEFT"
+    },
+    "genieSpace": {
+      "isEnabled": false
+    }
+  }
+}

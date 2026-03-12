@@ -5,7 +5,20 @@
       "displayName": "Total Cost",
       "queryLines": [
         "SELECT *\n",
-        "FROM billing.azure.actuals_gold"
+        "FROM IDENTIFIER(CASE WHEN :param_cost_dataset = 'Amortized' THEN 'billing.azure.amortized_gold' ELSE 'billing.azure.actuals_gold' END)"
+      ],
+      "parameters": [
+        {
+          "displayName": "param_cost_dataset",
+          "keyword": "param_cost_dataset",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [{"value": "Actuals"}]
+            }
+          }
+        }
       ]
     },
     {
@@ -20,11 +33,24 @@
         "  w.warehouse_type AS warehouse_type,\n",
         "  w.warehouse_size AS warehouse_size,\n",
         "  w.tags AS warehouse_tags\n",
-        "FROM billing.azure.actuals_gold ag\n",
+        "FROM IDENTIFIER(CASE WHEN :param_cost_dataset = 'Amortized' THEN 'billing.azure.amortized_gold' ELSE 'billing.azure.actuals_gold' END) ag\n",
         "LEFT JOIN system.compute.clusters c\n",
         "  ON CAST(ag.parsedTags:ClusterId AS STRING) = c.cluster_id\n",
         "LEFT JOIN system.compute.warehouses w\n",
         "  ON CAST(ag.parsedTags:SqlEndpointId AS STRING) = w.warehouse_id"
+      ],
+      "parameters": [
+        {
+          "displayName": "param_cost_dataset",
+          "keyword": "param_cost_dataset",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [{"value": "Actuals"}]
+            }
+          }
+        }
       ]
     },
     {
@@ -38,7 +64,7 @@
         "    date_trunc('MONTH', date) as usage_month,\n",
         "    date_trunc('WEEK', date) as usage_week,\n",
         "    u.*\n",
-        "  from actuals_gold as u\n",
+        "  from IDENTIFIER(CASE WHEN :param_cost_dataset = 'Amortized' THEN 'billing.azure.amortized_gold' ELSE 'billing.azure.actuals_gold' END) as u\n",
         "),\n",
         "-- eval time_key param\n",
         "usage_time_key as (\n",
@@ -163,6 +189,17 @@
               ]
             }
           }
+        },
+        {
+          "displayName": "param_cost_dataset",
+          "keyword": "param_cost_dataset",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [{"value": "Actuals"}]
+            }
+          }
         }
       ],
       "catalog": "billing",
@@ -180,10 +217,21 @@
         "    )\n",
         "  )\n",
         ") AS tag_key\n",
-        "FROM actuals_gold"
+        "FROM IDENTIFIER(CASE WHEN :param_cost_dataset = 'Amortized' THEN 'billing.azure.amortized_gold' ELSE 'billing.azure.actuals_gold' END)"
       ],
-      "catalog": "billing",
-      "schema": "azure"
+      "parameters": [
+        {
+          "displayName": "param_cost_dataset",
+          "keyword": "param_cost_dataset",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [{"value": "Actuals"}]
+            }
+          }
+        }
+      ]
     },
     {
       "name": "e5e0d82b",
@@ -194,6 +242,16 @@
         "  'Week',\n",
         "  'Month'\n",
         ")) as time_key"
+      ]
+    },
+    {
+      "name": "a1b2c3d4",
+      "displayName": "select_cost_table",
+      "queryLines": [
+        "SELECT explode(array(\n",
+        "  'Actuals',\n",
+        "  'Amortized'\n",
+        ")) AS cost_dataset"
       ]
     },
     {
@@ -269,6 +327,10 @@
                     "title": "Meter Category"
                   }
                 }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Daily Cost by Service Category"
               }
             }
           },
@@ -380,7 +442,9 @@
                 "\n",
                 "- <span style=\"font-size:12px;font-family:Tahoma\">This dashboard includes the cloud infrastructure & DBU costs related to Azure Databricks</span>\n",
                 "- <span style=\"font-size:12px;font-family:Tahoma\">The cost includes cost related to VM, storage, networking</span>\n",
-                "- <span style=\"font-size:12px;font-family:Tahoma\">Use the global filter for Vendor = Databricks, to filter for just costs related to Databricks deployment (by default, all Azure services are included from Cost Management export) \\\\</span>"
+                "- <span style=\"font-size:12px;font-family:Tahoma\">Use the global filter for Vendor = Databricks, to filter for just costs related to Databricks deployment (by default, all Azure services are included from Cost Management export)</span>\n",
+                "\n",
+                "**Azure Cost Dashboard** — View your Azure infrastructure costs from Cost Management exports. Use the **Cost Type** filter to switch between Actuals and Amortized views. Actuals show billed costs as incurred. Amortized spreads reservation purchases across the usage period."
               ]
             }
           },
@@ -1034,7 +1098,9 @@
                 "<span style=\"font-size:24px;font-family:Tahoma\">**Cost by compute**</span>\n",
                 "\n",
                 "- <span style=\"font-size:12px;font-family:Tahoma\">View detailed costs by compute type - cluster or warehouse</span>\n",
-                "- <span style=\"font-size:12px;font-family:Tahoma\">Please note that several cost types will not be tied to a cluster or warehouse, such as severless notebooks, endpoints, networking, apps etc. </span>"
+                "- <span style=\"font-size:12px;font-family:Tahoma\">Please note that several cost types will not be tied to a cluster or warehouse, such as severless notebooks, endpoints, networking, apps etc.</span>\n",
+                "\n",
+                "**Compute Cost Analysis** — Break down Azure costs by Databricks clusters and SQL warehouses. Join billing data with Databricks system tables for full infrastructure TCO."
               ]
             }
           },
@@ -1312,6 +1378,125 @@
           "position": {
             "x": 0,
             "y": 4,
+            "width": 1,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "f1e2d3c4",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "a1b2c3d4",
+                  "fields": [
+                    {
+                      "name": "cost_dataset",
+                      "expression": "`cost_dataset`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              },
+              {
+                "name": "parameter_ae7776ee_param_cost_dataset",
+                "query": {
+                  "datasetName": "ae7776ee",
+                  "parameters": [
+                    {
+                      "name": "param_cost_dataset",
+                      "keyword": "param_cost_dataset"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "parameter_0ae67941_param_cost_dataset",
+                "query": {
+                  "datasetName": "0ae67941",
+                  "parameters": [
+                    {
+                      "name": "param_cost_dataset",
+                      "keyword": "param_cost_dataset"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "parameter_538a5330_param_cost_dataset",
+                "query": {
+                  "datasetName": "538a5330",
+                  "parameters": [
+                    {
+                      "name": "param_cost_dataset",
+                      "keyword": "param_cost_dataset"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "parameter_4c5663a7_param_cost_dataset",
+                "query": {
+                  "datasetName": "4c5663a7",
+                  "parameters": [
+                    {
+                      "name": "param_cost_dataset",
+                      "keyword": "param_cost_dataset"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-single-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "cost_dataset",
+                    "queryName": "main_query",
+                    "displayName": "Cost Type",
+                    "defaultSelection": {
+                      "values": {
+                        "dataType": "STRING",
+                        "values": [
+                          {"value": "Actuals"}
+                        ]
+                      }
+                    }
+                  },
+                  {
+                    "parameterName": "param_cost_dataset",
+                    "queryName": "parameter_ae7776ee_param_cost_dataset"
+                  },
+                  {
+                    "parameterName": "param_cost_dataset",
+                    "queryName": "parameter_0ae67941_param_cost_dataset"
+                  },
+                  {
+                    "parameterName": "param_cost_dataset",
+                    "queryName": "parameter_538a5330_param_cost_dataset"
+                  },
+                  {
+                    "parameterName": "param_cost_dataset",
+                    "queryName": "parameter_4c5663a7_param_cost_dataset"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Cost Type"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 6,
             "width": 1,
             "height": 2
           }
@@ -1684,7 +1869,9 @@
               "lines": [
                 "<span style=\"font-size:24px;font-family:Tahoma\">**Cost by tags**</span>\n",
                 "\n",
-                "- <span style=\"font-size:12px;font-family:Tahoma\">Group and filter costs by tag</span>s - these include tags applied directly in Azure, but also Databricks "
+                "- <span style=\"font-size:12px;font-family:Tahoma\">Group and filter costs by tag</span>s - these include tags applied directly in Azure, but also Databricks\n",
+                "\n",
+                "**Cost by Tags** — Analyze Azure costs by resource tags. Configure tag keys to group and filter costs by your organization's tagging taxonomy."
               ]
             }
           },
