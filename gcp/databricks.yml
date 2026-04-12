@@ -1,0 +1,46 @@
+bundle:
+  name: gcp_cost
+
+include:
+  - resources/*.yml
+
+sync:
+  exclude:
+    - src/*.lvdash.json
+
+variables:
+  catalog:
+    description: "Catalog where volume and tables will be configured"
+    default: billing
+  schema:
+    description: "Schema where volume and tables will be configured"
+    default: gcp
+  volume_name:
+    description: "Name of volume"
+    default: cost_export
+  bronze_table_name:
+    description: "Name of bronze table"
+    default: gcp_cost_bronze
+  silver_table_name:
+    description: "Name of silver table"
+    default: gcp_cost_silver
+  gold_table_name:
+    description: "Name of gold table"
+    default: gcp_cost_gold
+  volume_path:
+    default: /Volumes/${var.catalog}/${var.schema}/${var.volume_name}/
+  source_file_path:
+    description: "Location in Volume where AutoLoader is reading GCP billing export files from"
+    default: ${var.volume_path}gcp-detailed-cost/*/*.parquet
+  ingestion_date_depth:
+    description: "Pipeline uses split_part to extract export timestamp (e.g. 20250412143000) from file source_file_path"
+    default: 6
+  warehouse_id:
+    description: "Id of SQL warehouse that the dashboard uses"
+
+targets:
+  dev:
+    mode: development
+    default: true
+    variables:
+      warehouse_id: ""

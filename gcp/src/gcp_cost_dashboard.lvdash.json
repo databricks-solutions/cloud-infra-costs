@@ -1,0 +1,1198 @@
+{
+  "datasets": [
+    {
+      "name": "d1a0b1c2",
+      "displayName": "Total Cost",
+      "queryLines": [
+        "SELECT *\n",
+        "FROM billing.gcp.gcp_cost_gold"
+      ]
+    },
+    {
+      "name": "d2b1c2d3",
+      "displayName": "Compute TCO",
+      "queryLines": [
+        "SELECT\n",
+        "  g.*,\n",
+        "  c.cluster_name AS system_cluster_name,\n",
+        "  c.cluster_source,\n",
+        "  c.driver_node_type_id,\n",
+        "  c.node_type_id,\n",
+        "  j.name AS system_job_name\n",
+        "FROM billing.gcp.gcp_cost_gold g\n",
+        "LEFT JOIN system.compute.clusters c\n",
+        "  ON g.db_cluster_id = c.cluster_id\n",
+        "LEFT JOIN system.lakeflow.jobs j\n",
+        "  ON g.db_job_id = CAST(j.job_id AS STRING)"
+      ]
+    },
+    {
+      "name": "d3c2d3e4",
+      "displayName": "Label Analysis",
+      "queryLines": [
+        "WITH\n",
+        "usage AS (\n",
+        "  SELECT\n",
+        "    date_trunc('QUARTER', usage_start_time) AS usage_quarter,\n",
+        "    date_trunc('MONTH', usage_start_time) AS usage_month,\n",
+        "    date_trunc('WEEK', usage_start_time) AS usage_week,\n",
+        "    DATE(usage_start_time) AS usage_day,\n",
+        "    u.*\n",
+        "  FROM billing.gcp.gcp_cost_gold AS u\n",
+        "),\n",
+        "usage_time_key AS (\n",
+        "  SELECT\n",
+        "    IDENTIFIER(\n",
+        "      CASE\n",
+        "        WHEN :param_time_key = 'Quarter' THEN 'usage_quarter'\n",
+        "        WHEN :param_time_key = 'Month' THEN 'usage_month'\n",
+        "        WHEN :param_time_key = 'Week' THEN 'usage_week'\n",
+        "        ELSE 'usage_day'\n",
+        "      END\n",
+        "    ) AS time_key,\n",
+        "    *\n",
+        "  FROM usage\n",
+        ")\n",
+        "SELECT\n",
+        "  time_key,\n",
+        "  service_description,\n",
+        "  project_name,\n",
+        "  label_entry.key AS label_key,\n",
+        "  label_entry.value AS label_value,\n",
+        "  cost,\n",
+        "  credits_total,\n",
+        "  net_cost\n",
+        "FROM usage_time_key\n",
+        "LATERAL VIEW OUTER EXPLODE(labels) AS label_entry"
+      ],
+      "parameters": [
+        {
+          "displayName": "param_time_key",
+          "keyword": "param_time_key",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [{"value": "Week"}]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "d4d3e4f5",
+      "displayName": "Service SKU Breakdown",
+      "queryLines": [
+        "SELECT\n",
+        "  billing_period,\n",
+        "  service_description,\n",
+        "  sku_description,\n",
+        "  project_name,\n",
+        "  location_region,\n",
+        "  cost_type,\n",
+        "  SUM(cost) AS total_cost,\n",
+        "  SUM(credits_total) AS total_credits,\n",
+        "  SUM(net_cost) AS total_net_cost\n",
+        "FROM billing.gcp.gcp_cost_gold\n",
+        "GROUP BY ALL"
+      ]
+    },
+    {
+      "name": "d5e4f5a6",
+      "displayName": "select_time_key",
+      "queryLines": [
+        "SELECT EXPLODE(ARRAY(\n",
+        "  'Day',\n",
+        "  'Week',\n",
+        "  'Month',\n",
+        "  'Quarter'\n",
+        ")) AS time_key"
+      ]
+    },
+    {
+      "name": "d6f5a6b7",
+      "displayName": "select_label_keys",
+      "queryLines": [
+        "SELECT DISTINCT label_entry.key AS label_key\n",
+        "FROM billing.gcp.gcp_cost_gold\n",
+        "LATERAL VIEW OUTER EXPLODE(labels) AS label_entry\n",
+        "WHERE label_entry.key IS NOT NULL\n",
+        "ORDER BY label_key"
+      ]
+    }
+  ],
+  "pages": [
+    {
+      "name": "p1a0b1c2",
+      "displayName": "Cost Overview",
+      "layout": [
+        {
+          "widget": {
+            "name": "w1a1b1c1",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "d1a0b1c2",
+                  "fields": [
+                    {
+                      "name": "service_description",
+                      "expression": "`service_description`"
+                    },
+                    {
+                      "name": "daily(usage_start_time)",
+                      "expression": "DATE_TRUNC(\"DAY\", `usage_start_time`)"
+                    },
+                    {
+                      "name": "sum(net_cost)",
+                      "expression": "SUM(`net_cost`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "daily(usage_start_time)",
+                  "scale": {
+                    "type": "temporal"
+                  },
+                  "axis": {
+                    "title": "Date"
+                  }
+                },
+                "y": {
+                  "fieldName": "sum(net_cost)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "axis": {
+                    "title": "Net Cost"
+                  }
+                },
+                "color": {
+                  "fieldName": "service_description",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "legend": {
+                    "title": "Service"
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Daily Cost by Service"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 6,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "w1a2b2c2",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "d1a0b1c2",
+                  "fields": [
+                    {
+                      "name": "project_name",
+                      "expression": "`project_name`"
+                    },
+                    {
+                      "name": "sum(net_cost)",
+                      "expression": "SUM(`net_cost`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "project_name",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "axis": {
+                    "title": "Project"
+                  }
+                },
+                "y": {
+                  "fieldName": "sum(net_cost)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "axis": {
+                    "title": "Net Cost"
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Cost by Project"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 6,
+            "width": 3,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "w1a3b3c3",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "d1a0b1c2",
+                  "fields": [
+                    {
+                      "name": "location_region",
+                      "expression": "`location_region`"
+                    },
+                    {
+                      "name": "sum(net_cost)",
+                      "expression": "SUM(`net_cost`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "location_region",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "axis": {
+                    "title": "Region"
+                  }
+                },
+                "y": {
+                  "fieldName": "sum(net_cost)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "axis": {
+                    "title": "Net Cost"
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Cost by Region"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 6,
+            "width": 3,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "w1a4b4c4",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "d1a0b1c2",
+                  "fields": [
+                    {
+                      "name": "sum(net_cost)",
+                      "expression": "SUM(`net_cost`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(net_cost)",
+                  "displayName": "Total Net Cost"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Total Net Cost"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 12,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "w1a5b5c5",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "d1a0b1c2",
+                  "fields": [
+                    {
+                      "name": "sum(cost)",
+                      "expression": "SUM(`cost`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(cost)",
+                  "displayName": "Total Gross Cost"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Total Gross Cost"
+              }
+            }
+          },
+          "position": {
+            "x": 2,
+            "y": 12,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "w1a6b6c6",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "d1a0b1c2",
+                  "fields": [
+                    {
+                      "name": "sum(credits_total)",
+                      "expression": "SUM(`credits_total`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(credits_total)",
+                  "displayName": "Total Credits"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Total Credits"
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 12,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "w1f1a1b1",
+            "queries": [
+              {
+                "name": "filter_query",
+                "query": {
+                  "datasetName": "d1a0b1c2",
+                  "fields": [
+                    {
+                      "name": "service_description",
+                      "expression": "`service_description`"
+                    },
+                    {
+                      "name": "service_description_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-single-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "service_description",
+                    "queryName": "filter_query"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Service"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 15,
+            "width": 3,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "w1f2a2b2",
+            "queries": [
+              {
+                "name": "filter_query",
+                "query": {
+                  "datasetName": "d1a0b1c2",
+                  "fields": [
+                    {
+                      "name": "project_name",
+                      "expression": "`project_name`"
+                    },
+                    {
+                      "name": "project_name_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-single-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "project_name",
+                    "queryName": "filter_query"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Project"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 15,
+            "width": 3,
+            "height": 1
+          }
+        }
+      ]
+    },
+    {
+      "name": "p2b1c2d3",
+      "displayName": "Compute TCO",
+      "layout": [
+        {
+          "widget": {
+            "name": "w2a1b1c1",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "d2b1c2d3",
+                  "fields": [
+                    {
+                      "name": "db_cluster_id",
+                      "expression": "`db_cluster_id`"
+                    },
+                    {
+                      "name": "system_cluster_name",
+                      "expression": "`system_cluster_name`"
+                    },
+                    {
+                      "name": "sum(net_cost)",
+                      "expression": "SUM(`net_cost`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "system_cluster_name",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "axis": {
+                    "title": "Cluster"
+                  }
+                },
+                "y": {
+                  "fieldName": "sum(net_cost)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "axis": {
+                    "title": "Net Cost"
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Cost by Cluster"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 6,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "w2a2b2c2",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "d2b1c2d3",
+                  "fields": [
+                    {
+                      "name": "db_job_id",
+                      "expression": "`db_job_id`"
+                    },
+                    {
+                      "name": "system_job_name",
+                      "expression": "`system_job_name`"
+                    },
+                    {
+                      "name": "sum(net_cost)",
+                      "expression": "SUM(`net_cost`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "system_job_name",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "axis": {
+                    "title": "Job"
+                  }
+                },
+                "y": {
+                  "fieldName": "sum(net_cost)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "axis": {
+                    "title": "Net Cost"
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Cost by Job"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 6,
+            "width": 6,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "w2a3b3c3",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "d2b1c2d3",
+                  "fields": [
+                    {
+                      "name": "daily(usage_start_time)",
+                      "expression": "DATE_TRUNC(\"DAY\", `usage_start_time`)"
+                    },
+                    {
+                      "name": "db_cluster_name",
+                      "expression": "`db_cluster_name`"
+                    },
+                    {
+                      "name": "sum(net_cost)",
+                      "expression": "SUM(`net_cost`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "daily(usage_start_time)",
+                  "scale": {
+                    "type": "temporal"
+                  },
+                  "axis": {
+                    "title": "Date"
+                  }
+                },
+                "y": {
+                  "fieldName": "sum(net_cost)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "axis": {
+                    "title": "Net Cost"
+                  }
+                },
+                "color": {
+                  "fieldName": "db_cluster_name",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "legend": {
+                    "title": "Cluster"
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Daily Cluster Cost Over Time"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 12,
+            "width": 6,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "w2t1a1b1",
+            "textbox_spec": "**Note:** GCP SQL warehouses are serverless and do not generate GCE billing line items with Databricks tags. Warehouse compute costs are tracked exclusively through `system.billing.usage`, not through GCP infrastructure billing."
+          },
+          "position": {
+            "x": 0,
+            "y": 18,
+            "width": 6,
+            "height": 1
+          }
+        }
+      ]
+    },
+    {
+      "name": "p3c2d3e4",
+      "displayName": "Cost by Labels",
+      "layout": [
+        {
+          "widget": {
+            "name": "w3a1b1c1",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "d3c2d3e4",
+                  "fields": [
+                    {
+                      "name": "time_key",
+                      "expression": "`time_key`"
+                    },
+                    {
+                      "name": "label_value",
+                      "expression": "`label_value`"
+                    },
+                    {
+                      "name": "sum(net_cost)",
+                      "expression": "SUM(`net_cost`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "time_key",
+                  "scale": {
+                    "type": "temporal"
+                  },
+                  "axis": {
+                    "title": "Time"
+                  }
+                },
+                "y": {
+                  "fieldName": "sum(net_cost)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "axis": {
+                    "title": "Net Cost"
+                  }
+                },
+                "color": {
+                  "fieldName": "label_value",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "legend": {
+                    "title": "Label Value"
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Cost by Label Over Time"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 2,
+            "width": 6,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "w3a2b2c2",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "d3c2d3e4",
+                  "fields": [
+                    {
+                      "name": "label_key",
+                      "expression": "`label_key`"
+                    },
+                    {
+                      "name": "label_value",
+                      "expression": "`label_value`"
+                    },
+                    {
+                      "name": "sum(net_cost)",
+                      "expression": "SUM(`net_cost`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "label_key",
+                    "title": "Label Key"
+                  },
+                  {
+                    "fieldName": "label_value",
+                    "title": "Label Value"
+                  },
+                  {
+                    "fieldName": "sum(net_cost)",
+                    "title": "Net Cost"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Cost by Label Key-Value Pair"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 8,
+            "width": 6,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "w3f1a1b1",
+            "queries": [
+              {
+                "name": "filter_query",
+                "query": {
+                  "datasetName": "d3c2d3e4",
+                  "fields": [
+                    {
+                      "name": "label_key",
+                      "expression": "`label_key`"
+                    },
+                    {
+                      "name": "label_key_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-single-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "label_key",
+                    "queryName": "filter_query"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Label Key"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 3,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "w3f2a2b2",
+            "queries": [
+              {
+                "name": "param_query",
+                "query": {
+                  "datasetName": "d5e4f5a6",
+                  "fields": [
+                    {
+                      "name": "time_key",
+                      "expression": "`time_key`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-single-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "time_key",
+                    "queryName": "param_query",
+                    "parameterName": "param_time_key"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Time Granularity"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 0,
+            "width": 3,
+            "height": 1
+          }
+        }
+      ]
+    },
+    {
+      "name": "p4d3e4f5",
+      "displayName": "Service & SKU Breakdown",
+      "layout": [
+        {
+          "widget": {
+            "name": "w4a1b1c1",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "d4d3e4f5",
+                  "fields": [
+                    {
+                      "name": "service_description",
+                      "expression": "`service_description`"
+                    },
+                    {
+                      "name": "total_net_cost",
+                      "expression": "SUM(`total_net_cost`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "service_description",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "axis": {
+                    "title": "Service"
+                  }
+                },
+                "y": {
+                  "fieldName": "total_net_cost",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "axis": {
+                    "title": "Net Cost"
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Cost by Service"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 6,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "w4a2b2c2",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "d4d3e4f5",
+                  "fields": [
+                    {
+                      "name": "service_description",
+                      "expression": "`service_description`"
+                    },
+                    {
+                      "name": "sku_description",
+                      "expression": "`sku_description`"
+                    },
+                    {
+                      "name": "total_net_cost",
+                      "expression": "SUM(`total_net_cost`)"
+                    },
+                    {
+                      "name": "total_cost",
+                      "expression": "SUM(`total_cost`)"
+                    },
+                    {
+                      "name": "total_credits",
+                      "expression": "SUM(`total_credits`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "service_description",
+                    "title": "Service"
+                  },
+                  {
+                    "fieldName": "sku_description",
+                    "title": "SKU"
+                  },
+                  {
+                    "fieldName": "total_net_cost",
+                    "title": "Net Cost"
+                  },
+                  {
+                    "fieldName": "total_cost",
+                    "title": "Gross Cost"
+                  },
+                  {
+                    "fieldName": "total_credits",
+                    "title": "Credits"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Service & SKU Detail"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 6,
+            "width": 6,
+            "height": 8
+          }
+        },
+        {
+          "widget": {
+            "name": "w4f1a1b1",
+            "queries": [
+              {
+                "name": "filter_query",
+                "query": {
+                  "datasetName": "d4d3e4f5",
+                  "fields": [
+                    {
+                      "name": "service_description",
+                      "expression": "`service_description`"
+                    },
+                    {
+                      "name": "service_description_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-single-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "service_description",
+                    "queryName": "filter_query"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Service"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 14,
+            "width": 3,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "w4f2a2b2",
+            "queries": [
+              {
+                "name": "filter_query",
+                "query": {
+                  "datasetName": "d4d3e4f5",
+                  "fields": [
+                    {
+                      "name": "project_name",
+                      "expression": "`project_name`"
+                    },
+                    {
+                      "name": "project_name_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-single-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "project_name",
+                    "queryName": "filter_query"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Project"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 14,
+            "width": 3,
+            "height": 1
+          }
+        }
+      ]
+    }
+  ]
+}

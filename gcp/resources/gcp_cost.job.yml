@@ -1,0 +1,13 @@
+resources:
+  jobs:
+    gcp_cost_job:
+      name: gcp_cost_job
+
+      trigger:
+        file_arrival:
+          url: ${var.volume_path}gcp-detailed-cost/
+
+      tasks:
+        - task_key: refresh_pipeline
+          pipeline_task:
+            pipeline_id: ${resources.pipelines.gcp_cost_pipeline.id}

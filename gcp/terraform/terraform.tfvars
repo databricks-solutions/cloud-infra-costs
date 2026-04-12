@@ -1,0 +1,8 @@
+gcp_project_id         = "<GCP Project Id>"
+gcp_region             = "<GCP Region>"
+databricks_host        = "<Workspace Url>"
+gcs_bucket_name        = "<Globally Unique Bucket Name>"
+bigquery_dataset_id    = "<BigQuery Dataset Id>"
+bigquery_billing_table = "<BigQuery Billing Table Name>"
+catalog_name           = "billing"
+schema_name            = "gcp"

@@ -1,0 +1,18 @@
+resources:
+  pipelines:
+    gcp_cost_pipeline:
+      name: gcp_cost_pipeline
+      catalog: ${var.catalog}
+      schema: ${var.schema}
+      serverless: true
+      libraries:
+        - notebook:
+            path: ../src/gcp_cost_pipeline.ipynb
+
+      configuration:
+        bundle.sourcePath: ${workspace.file_path}/src
+        source_file_path: ${var.source_file_path}
+        bronze_table_name: ${var.bronze_table_name}
+        silver_table_name: ${var.silver_table_name}
+        gold_table_name: ${var.gold_table_name}
+        ingestion_date_depth: ${var.ingestion_date_depth}
