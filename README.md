@@ -3,9 +3,12 @@ For Databricks non-serverless compute, total cost of ownership (TCO) information
 
 This solution helps automate and simplify this process - with it, users can report on the total infra (VM, networking, storage) and Databricks costs (DBUs) of their classic compute, in unified dashboards.
 
-The solution is broken down into two pieces.  One for Azure Databricks customers and the other for customers deploying Databricks on AWS.  For instructions on how to setup this solution, please see the following:
-- [Azure](azure/README.md)
-- [AWS](aws/README.md)
+The FOCUS v1.3 query in [`focus/`](focus/README.md) is listed on the [FinOps Foundation site](https://focus.finops.org/) as a FOCUS v1.3 data generator.
+
+These three pieces can be used independently or in combination:
+- [**Azure**](azure/README.md) — unifies Azure Cost Management exports (Actuals, Amortized, FOCUS) with Databricks system tables.
+- [**AWS**](aws/README.md) — unifies AWS CUR with Databricks system tables.
+- [**FOCUS v1.3**](focus/README.md) — vendor-neutral [FinOps Open Cost and Usage Specification](https://focus.finops.org/focus-specification/v1-3/) output from Databricks system tables. Recommended if you want a single, standardized schema across cloud providers.
 
 <img width="1444" height="653" alt="Screenshot 2025-11-05 at 10 58 37 AM" src="https://github.com/user-attachments/assets/611b8cf5-cf23-4c98-84a9-eab3776669fe" />
 
