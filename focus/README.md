@@ -94,3 +94,7 @@ Then execute the query, or use the query parameter UI in Databricks SQL.
 ## Notes
 
 - Mapping is on a best-effort level and will improve as additional data points are added to system tables. Customers may also use the SQL script as a starting point and make further changes
+
+## Attribution
+
+FOCUS™ is a trademark of the FinOps Foundation. The FOCUS specification is licensed under [CC-BY 4.0](https://creativecommons.org/licenses/by/4.0/legalcode) by Joint Development Foundation Projects, LLC, FinOps Open Cost and Usage Specification (FOCUS) Series and its contributors.
