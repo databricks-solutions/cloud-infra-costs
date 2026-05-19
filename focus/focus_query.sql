@@ -2,8 +2,9 @@
 -- Compatible with Databricks SQL and Unity Catalog
 -- Specification: https://focus.finops.org/focus-specification/v1-3/
 
--- Usage: Replace :account_prices with your account-level prices table path,
---        e.g. system.billing.list_prices (same table, filtered to your account).
+-- Usage: Replace :account_prices with your account-level prices table path.
+--        If you are not in the Account Prices Preview, use system.billing.list_prices.
+--        If you are in the Account Prices Preview (AWS/GCP only), use system.billing.account_prices.
 WITH pipeline_names AS (
   -- Latest known name per pipeline (system.lakeflow.pipelines is an SCD table)
   SELECT account_id, workspace_id, pipeline_id, name AS pipeline_name

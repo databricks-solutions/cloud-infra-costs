@@ -16,10 +16,12 @@ Maps Databricks billing data from Unity Catalog system tables to the [FinOps Ope
 
 | Parameter | Description | Value |
 |-----------|-------------|---------|
-| `:account_prices` | Full path to the prices table. Use this value if you are not in the Account Prices Preview | `system.billing.list_prices` |
-| `:account_prices` | ull path to the prices table. Use this value if you are participating in the Account Prices Preview | `system.billing.list_prices` |
+| `:account_prices` | Full path to the prices table. Use this value if you are **not** in the Account Prices Preview. | `system.billing.list_prices` |
+| `:account_prices` | Full path to the prices table. Use this value if you **are** participating in the Account Prices Preview (AWS and GCP only). | `system.billing.account_prices` |
 
 Set this as a Databricks SQL query parameter or substitute it directly in the query.
+
+> Not sure if you're in the Account Prices Preview? Ask your Databricks account team.
 
 ## Usage
 
