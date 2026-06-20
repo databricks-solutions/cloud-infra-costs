@@ -1,0 +1,772 @@
+{
+  "datasets": [
+    {
+      "name": "dataset1",
+      "displayName": "gold_unified_costs",
+      "queryLines": [
+        "SELECT * FROM billing.gcp.gold_unified_costs"
+      ]
+    },
+    {
+      "name": "daily_sku_costs",
+      "displayName": "Daily Costs by SKU",
+      "queryLines": [
+        "SELECT\n",
+        "  usage_date,\n",
+        "  sku_name AS sku,\n",
+        "  'Databricks' AS source,\n",
+        "  workspace_id,\n",
+        "  dbu_list_cost AS cost\n",
+        "FROM\n",
+        " silver_databricks_usage\n",
+        "UNION ALL\n",
+        "SELECT\n",
+        "  usage_date,\n",
+        "  sku_description AS sku,\n",
+        "  'GCP' AS source,\n",
+        "  NULL AS workspace_id,\n",
+        "  net_cost AS cost\n",
+        "FROM\n",
+        " silver_gcp_billing"
+      ],
+      "catalog": "billing",
+      "schema": "gcp"
+    },
+    {
+      "name": "chargeback_sku",
+      "displayName": "Chargeback by SKU",
+      "queryLines": [
+        "SELECT\n",
+        "  usage_date,\n",
+        "  sku_name,\n",
+        "  billing_origin_product,\n",
+        "  workspace_id,\n",
+        "  COALESCE(team_tag, 'untagged') AS team,\n",
+        "  COALESCE(cost_center_tag, 'untagged') AS cost_center,\n",
+        "  cluster_id,\n",
+        "  job_id,\n",
+        "  job_name,\n",
+        "  run_as_user,\n",
+        "  is_serverless,\n",
+        "  dbu_quantity,\n",
+        "  dbu_list_cost\n",
+        "FROM\n",
+        "  silver_databricks_usage"
+      ],
+      "catalog": "billing",
+      "schema": "gcp"
+    },
+    {
+      "name": "chargeback",
+      "displayName": "Chargeback",
+      "queryLines": [
+        "WITH job_dbu_daily AS (\n",
+        "  SELECT\n",
+        "    usage_date,\n",
+        "    cluster_id,\n",
+        "    job_id,\n",
+        "    job_name,\n",
+        "    run_as_user,\n",
+        "    is_serverless,\n",
+        "    COALESCE(team_tag, 'untagged') AS team,\n",
+        "    COALESCE(cost_center_tag, 'untagged') AS cost_center,\n",
+        "    SUM(dbu_list_cost) AS job_dbu_cost\n",
+        "  FROM\n",
+        "    silver_databricks_usage\n",
+        "  GROUP BY\n",
+        "    ALL\n",
+        "),\n",
+        "cluster_dbu_totals AS (\n",
+        "  SELECT\n",
+        "    usage_date,\n",
+        "    cluster_id,\n",
+        "    SUM(job_dbu_cost) AS cluster_total_dbu_cost\n",
+        "  FROM\n",
+        "    job_dbu_daily\n",
+        "  WHERE\n",
+        "    cluster_id IS NOT NULL\n",
+        "  GROUP BY\n",
+        "    ALL\n",
+        "),\n",
+        "gcp_costs AS (\n",
+        "  SELECT\n",
+        "    usage_date,\n",
+        "    cluster_id,\n",
+        "    SUM(gcp_net_cost) AS gcp_net_cost\n",
+        "  FROM\n",
+        "    cost_management.billing.gold_unified_costs\n",
+        "  WHERE\n",
+        "    cluster_id IS NOT NULL\n",
+        "  GROUP BY\n",
+        "    ALL\n",
+        ")\n",
+        "SELECT\n",
+        "  j.usage_date,\n",
+        "  j.cluster_id,\n",
+        "  j.job_id,\n",
+        "  j.job_name,\n",
+        "  j.run_as_user,\n",
+        "  j.team,\n",
+        "  j.cost_center,\n",
+        "  j.is_serverless,\n",
+        "  j.job_dbu_cost,\n",
+        "  CASE\n",
+        "    WHEN\n",
+        "      j.cluster_id IS NOT NULL\n",
+        "      AND ct.cluster_total_dbu_cost > 0\n",
+        "    THEN\n",
+        "      (j.job_dbu_cost / ct.cluster_total_dbu_cost) * COALESCE(g.gcp_net_cost, 0)\n",
+        "    ELSE 0\n",
+        "  END AS proportional_gcp_cost,\n",
+        "  j.job_dbu_cost\n",
+        "    + CASE\n",
+        "      WHEN\n",
+        "        j.cluster_id IS NOT NULL\n",
+        "        AND ct.cluster_total_dbu_cost > 0\n",
+        "      THEN\n",
+        "        (j.job_dbu_cost / ct.cluster_total_dbu_cost) * COALESCE(g.gcp_net_cost, 0)\n",
+        "      ELSE 0\n",
+        "    END AS total_chargeback_cost,\n",
+        "  CASE\n",
+        "    WHEN ct.cluster_total_dbu_cost > 0 THEN j.job_dbu_cost / ct.cluster_total_dbu_cost\n",
+        "    ELSE 1\n",
+        "  END AS dbu_proportion\n",
+        "FROM\n",
+        "  job_dbu_daily j\n",
+        "    LEFT JOIN cluster_dbu_totals ct\n",
+        "      ON j.cluster_id = ct.cluster_id\n",
+        "      AND j.usage_date = ct.usage_date\n",
+        "    LEFT JOIN gcp_costs g\n",
+        "      ON j.cluster_id = g.cluster_id\n",
+        "      AND j.usage_date = g.usage_date"
+      ],
+      "catalog": "billing",
+      "schema": "gcp"
+    }
+  ],
+  "pages": [
+    {
+      "name": "page1",
+      "displayName": "Overview",
+      "layout": [
+        {
+          "widget": {
+            "name": "gcp_cost_counter",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "dataset1",
+                  "fields": [
+                    {
+                      "name": "sum(gcp_net_cost)",
+                      "expression": "SUM(`gcp_net_cost`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "frame": {
+                "title": "Total GCP Cost",
+                "showTitle": true
+              },
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(gcp_net_cost)",
+                  "format": {
+                    "type": "number-currency",
+                    "currencyCode": "USD",
+                    "decimalPlaces": {
+                      "type": "exact",
+                      "places": 2
+                    },
+                    "abbreviation": "compact"
+                  },
+                  "displayName": "GCP Net Cost"
+                }
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 2,
+            "width": 4,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "dbu_cost_counter",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "dataset1",
+                  "fields": [
+                    {
+                      "name": "sum(dbu_list_cost)",
+                      "expression": "SUM(`dbu_list_cost`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "frame": {
+                "title": "Total Databricks Cost",
+                "showTitle": true
+              },
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(dbu_list_cost)",
+                  "format": {
+                    "type": "number-currency",
+                    "currencyCode": "USD",
+                    "decimalPlaces": {
+                      "type": "exact",
+                      "places": 2
+                    },
+                    "abbreviation": "compact"
+                  },
+                  "displayName": "DBU List Cost"
+                }
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 2,
+            "width": 4,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "total_cost_counter",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "dataset1",
+                  "fields": [
+                    {
+                      "name": "sum(total_net_cost)",
+                      "expression": "SUM(`total_net_cost`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "frame": {
+                "title": "Total Combined Cost",
+                "showTitle": true
+              },
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(total_net_cost)",
+                  "format": {
+                    "type": "number-currency",
+                    "currencyCode": "USD",
+                    "decimalPlaces": {
+                      "type": "exact",
+                      "places": 2
+                    },
+                    "abbreviation": "compact"
+                  },
+                  "displayName": "Total Net Cost"
+                }
+              }
+            }
+          },
+          "position": {
+            "x": 8,
+            "y": 2,
+            "width": 4,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "daily_spend_by_sku",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "daily_sku_costs",
+                  "fields": [
+                    {
+                      "name": "sku",
+                      "expression": "`sku`"
+                    },
+                    {
+                      "name": "daily(usage_date)",
+                      "expression": "DATE_TRUNC(\"DAY\", `usage_date`)"
+                    },
+                    {
+                      "name": "sum(cost)",
+                      "expression": "SUM(`cost`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "frame": {
+                "title": "Daily Spend by SKU",
+                "showTitle": true
+              },
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "daily(usage_date)",
+                  "displayName": "Date",
+                  "scale": {
+                    "type": "temporal"
+                  }
+                },
+                "y": {
+                  "fieldName": "sum(cost)",
+                  "displayName": "Cost",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "color": {
+                  "fieldName": "sku",
+                  "displayName": "SKU",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                }
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 11,
+            "width": 12,
+            "height": 9
+          }
+        },
+        {
+          "widget": {
+            "name": "date_filter",
+            "queries": [
+              {
+                "name": "dashboards/01f1339d01a313ce9b3a319a08e5cf35/datasets/01f1339d01a316b985195b9ab4866163_usage_date",
+                "query": {
+                  "datasetName": "dataset1",
+                  "fields": [
+                    {
+                      "name": "usage_date",
+                      "expression": "`usage_date`"
+                    },
+                    {
+                      "name": "usage_date_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "dashboards/01f1339d01a313ce9b3a319a08e5cf35/datasets/01f1339da6d81c1b99c31ede59d0ee2e_usage_date",
+                "query": {
+                  "datasetName": "daily_sku_costs",
+                  "fields": [
+                    {
+                      "name": "usage_date",
+                      "expression": "`usage_date`"
+                    },
+                    {
+                      "name": "usage_date_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "frame": {
+                "title": "Date Range",
+                "showTitle": true
+              },
+              "selection": {
+                "defaultSelection": {
+                  "range": {
+                    "dataType": "DATE",
+                    "min": {
+                      "value": "now/y"
+                    },
+                    "max": {
+                      "value": "now/y"
+                    }
+                  }
+                }
+              },
+              "widgetType": "filter-date-range-picker",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "usage_date",
+                    "queryName": "dashboards/01f1339d01a313ce9b3a319a08e5cf35/datasets/01f1339d01a316b985195b9ab4866163_usage_date"
+                  },
+                  {
+                    "fieldName": "usage_date",
+                    "queryName": "dashboards/01f1339d01a313ce9b3a319a08e5cf35/datasets/01f1339da6d81c1b99c31ede59d0ee2e_usage_date"
+                  }
+                ]
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 4,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "workspace_filter",
+            "queries": [
+              {
+                "name": "dashboards/01f1339d01a313ce9b3a319a08e5cf35/datasets/01f1339d01a316b985195b9ab4866163_workspace_id",
+                "query": {
+                  "datasetName": "dataset1",
+                  "fields": [
+                    {
+                      "name": "workspace_id",
+                      "expression": "`workspace_id`"
+                    },
+                    {
+                      "name": "workspace_id_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "dashboards/01f1339d01a313ce9b3a319a08e5cf35/datasets/01f1339da6d81c1b99c31ede59d0ee2e_workspace_id",
+                "query": {
+                  "datasetName": "daily_sku_costs",
+                  "fields": [
+                    {
+                      "name": "workspace_id",
+                      "expression": "`workspace_id`"
+                    },
+                    {
+                      "name": "workspace_id_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "frame": {
+                "title": "Workspace",
+                "showTitle": true
+              },
+              "widgetType": "filter-multi-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "workspace_id",
+                    "queryName": "dashboards/01f1339d01a313ce9b3a319a08e5cf35/datasets/01f1339d01a316b985195b9ab4866163_workspace_id"
+                  },
+                  {
+                    "fieldName": "workspace_id",
+                    "queryName": "dashboards/01f1339d01a313ce9b3a319a08e5cf35/datasets/01f1339da6d81c1b99c31ede59d0ee2e_workspace_id"
+                  }
+                ]
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 0,
+            "width": 4,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "cost_by_source",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "daily_sku_costs",
+                  "fields": [
+                    {
+                      "name": "source",
+                      "expression": "`source`"
+                    },
+                    {
+                      "name": "daily(usage_date)",
+                      "expression": "DATE_TRUNC(\"DAY\", `usage_date`)"
+                    },
+                    {
+                      "name": "sum(cost)",
+                      "expression": "SUM(`cost`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "frame": {
+                "title": "Cost by Provider",
+                "showTitle": true
+              },
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "daily(usage_date)",
+                  "displayName": "Provider",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "y": {
+                  "fieldName": "sum(cost)",
+                  "format": {
+                    "type": "number-currency",
+                    "currencyCode": "USD",
+                    "decimalPlaces": {
+                      "type": "exact",
+                      "places": 2
+                    },
+                    "abbreviation": "compact"
+                  },
+                  "displayName": "Total Cost",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "color": {
+                  "fieldName": "source",
+                  "displayName": "Provider",
+                  "scale": {
+                    "type": "categorical",
+                    "mappings": [
+                      {
+                        "value": "Databricks",
+                        "color": "#FF3621"
+                      },
+                      {
+                        "value": "GCP",
+                        "color": "#4285F4"
+                      }
+                    ]
+                  }
+                },
+                "label": {
+                  "show": true
+                }
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 5,
+            "width": 12,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "serverless",
+            "queries": [
+              {
+                "name": "dashboards/01f1339d01a313ce9b3a319a08e5cf35/datasets/01f1339d01a316b985195b9ab4866163_is_serverless",
+                "query": {
+                  "datasetName": "dataset1",
+                  "fields": [
+                    {
+                      "name": "is_serverless",
+                      "expression": "`is_serverless`"
+                    },
+                    {
+                      "name": "is_serverless_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "disallowAll": false,
+              "frame": {
+                "showTitle": true,
+                "title": "Serverless"
+              },
+              "widgetType": "filter-single-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "is_serverless",
+                    "queryName": "dashboards/01f1339d01a313ce9b3a319a08e5cf35/datasets/01f1339d01a316b985195b9ab4866163_is_serverless"
+                  }
+                ]
+              }
+            }
+          },
+          "position": {
+            "x": 8,
+            "y": 0,
+            "width": 4,
+            "height": 2
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layoutVersion": "GRID_V1"
+    },
+    {
+      "name": "364b79ab",
+      "displayName": "Global Filters",
+      "layout": [
+        {
+          "widget": {
+            "name": "06fd502c",
+            "queries": [
+              {
+                "name": "dashboards/01f1339d01a313ce9b3a319a08e5cf35/datasets/01f1339d01a316b985195b9ab4866163_usage_date",
+                "query": {
+                  "datasetName": "dataset1",
+                  "fields": [
+                    {
+                      "name": "usage_date",
+                      "expression": "`usage_date`"
+                    },
+                    {
+                      "name": "usage_date_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "dashboards/01f1339d01a313ce9b3a319a08e5cf35/datasets/01f1339da6d81c1b99c31ede59d0ee2e_usage_date",
+                "query": {
+                  "datasetName": "daily_sku_costs",
+                  "fields": [
+                    {
+                      "name": "usage_date",
+                      "expression": "`usage_date`"
+                    },
+                    {
+                      "name": "usage_date_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "dashboards/01f1339d01a313ce9b3a319a08e5cf35/datasets/01f137fb558415bf901605a384f33da1_usage_date",
+                "query": {
+                  "datasetName": "chargeback_sku",
+                  "fields": [
+                    {
+                      "name": "usage_date",
+                      "expression": "`usage_date`"
+                    },
+                    {
+                      "name": "usage_date_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "dashboards/01f1339d01a313ce9b3a319a08e5cf35/datasets/01f137fb56e31484a528c5302abeff5f_usage_date",
+                "query": {
+                  "datasetName": "chargeback",
+                  "fields": [
+                    {
+                      "name": "usage_date",
+                      "expression": "`usage_date`"
+                    },
+                    {
+                      "name": "usage_date_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "frame": {
+                "showTitle": true
+              },
+              "widgetType": "filter-date-range-picker",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "usage_date",
+                    "queryName": "dashboards/01f1339d01a313ce9b3a319a08e5cf35/datasets/01f1339d01a316b985195b9ab4866163_usage_date"
+                  },
+                  {
+                    "fieldName": "usage_date",
+                    "queryName": "dashboards/01f1339d01a313ce9b3a319a08e5cf35/datasets/01f1339da6d81c1b99c31ede59d0ee2e_usage_date"
+                  },
+                  {
+                    "fieldName": "usage_date",
+                    "queryName": "dashboards/01f1339d01a313ce9b3a319a08e5cf35/datasets/01f137fb558415bf901605a384f33da1_usage_date"
+                  },
+                  {
+                    "fieldName": "usage_date",
+                    "queryName": "dashboards/01f1339d01a313ce9b3a319a08e5cf35/datasets/01f137fb56e31484a528c5302abeff5f_usage_date"
+                  }
+                ]
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 1,
+            "height": 2
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_GLOBAL_FILTERS",
+      "layoutVersion": "GRID_V1"
+    }
+  ],
+  "uiSettings": {
+    "theme": {
+      "widgetHeaderAlignment": "ALIGNMENT_UNSPECIFIED"
+    },
+    "applyModeEnabled": false
+  }
+}

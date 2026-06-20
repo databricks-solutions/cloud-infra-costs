@@ -1,0 +1,12 @@
+resources:
+  jobs:
+    gcp_cost_job:
+      name: gcp_cost_job
+      tasks:
+        - task_key: trigger_sdp_gcp_pipeline
+          pipeline_task:
+            pipeline_id: ${resources.pipelines.gcp_cost_management_pipeline.id}
+            full_refresh: false
+      queue:
+        enabled: true
+      performance_target: STANDARD

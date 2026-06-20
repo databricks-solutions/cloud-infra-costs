@@ -1,0 +1,22 @@
+resources:
+  pipelines:
+    gcp_cost_management_pipeline:
+      name: GCP Cost Management Pipeline
+      libraries:
+        - glob:
+            include: ../src/transformations/**
+      catalog: ${var.catalog}
+      schema: ${var.schema}
+      channel: CURRENT
+      continuous: false
+      photon: true
+      root_path: ../src
+      serverless: true
+
+      configuration:
+          bundle.sourcePath: ${workspace.file_path}/src
+          source_file_path: ${var.source_file_path}
+          bronze_gcp_billing: ${var.bronze_gcp_billing}
+          silver_gcp_billing: ${var.silver_gcp_billing}
+          silver_databricks_usage: ${var.silver_databricks_usage}
+          gold_unified_costs: ${var.gold_unified_costs}
