@@ -1,0 +1,6 @@
+resources:
+  dashboards:
+    gcp_cost_dashboard:
+      display_name: '(GCP) Cost Monitoring Dashboard'
+      file_path: ../src/gcp_cost_monitoring_dashboard.lvdash.json
+      warehouse_id: ${var.warehouse_id}

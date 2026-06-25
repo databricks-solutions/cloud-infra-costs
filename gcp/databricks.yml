@@ -1,0 +1,70 @@
+# This is a Databricks asset bundle definition for gcp_bundle.
+# See https://docs.databricks.com/dev-tools/bundles/index.html for documentation.
+bundle:
+  name: gcp_bundle
+
+include:
+  - resources/*.yml
+  - resources/*/*.yml
+
+# Variable declarations. These variables are assigned in the dev/prod targets below.
+variables:
+  catalog:
+    description: "Catalog where tables will be configured"
+    default: billing
+  schema:
+    description: "Schema where tables will be configured"
+    default: gcp
+  bronze_gcp_billing:
+    description: "Name of bronze table for the GCP billing export data"
+    default: bronze_gcp_billing
+  silver_gcp_billing:
+    description: "Name of silver table for the transformed GCP billing export data."
+    default: silver_gcp_billing
+  silver_databricks_usage:
+    description: "Name of Databricks usage and billing system tables which are transformed in the silver layer."
+    default: silver_databricks_usage
+  gold_unified_costs:
+    description: "Name of gold table which unifies GCP and Databricks costs"  
+    default: gold_unified_costs
+  source_file_path:
+    description: "Location in GCS bucket where AutoLoader is reading the BigQuery Cost Export files from"
+    default: gs://gcp-billing-staging
+  warehouse_id:
+    lookup:
+      warehouse: 'Starter Warehouse' # Add the name of the SQL warehouse you have access to in your Databricks workspace
+  
+  
+
+targets:
+  dev:
+    # The default target uses 'mode: development' to create a development copy.
+    # - Deployed resources get prefixed with '[dev my_user_name]'
+    # - Any job schedules and triggers are paused by default.
+    # See also https://docs.databricks.com/dev-tools/bundles/deployment-modes.html.
+    mode: development
+    default: true
+    workspace:
+      host: https://WORKSPACE-ID.databricks.com
+    variables:
+      catalog: billing
+      schema: gcp
+      bronze_gcp_billing: bronze_gcp_name
+      silver_gcp_billing: silver_gcp_billing
+      silver_databricks_usage: silver_databricks_usage
+      gold_unified_costs: gold_unified_costs
+
+    presets:
+      artifacts_dynamic_version: true
+  prod:
+    mode: production
+    workspace:
+      host: https://WORKSPACE-ID.databricks.com # gcp billing
+      # We explicitly deploy to /Workspace/Users/user.name@example.com to make sure we only have a single copy.
+      root_path: /Workspace/Users/{workspace.current_user.userName}/.bundle/${bundle.name}/${bundle.target}
+    variables:
+      catalog: billing
+      schema: gcp
+    permissions:
+      - user_name: ${workspace.current_user.userName}
+        level: CAN_MANAGE
