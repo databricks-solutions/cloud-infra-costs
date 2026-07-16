@@ -88,9 +88,9 @@ Set the parameter according to the descriptions above and run in Databricks SQL 
 | 3.1.51 | ResourceId | Conditional | Mapped per `billing_origin_product` |
 | 3.1.52 | ResourceName | Conditional | Resolved via system table joins |
 | 3.1.53 | ResourceType | Conditional | Mapped per `billing_origin_product` |
-| 3.1.54 | ServiceProviderName | Mandatory | `'Databricks'` |
-| 3.1.55 | ServiceCategory | Mandatory | FOCUS taxonomy mapped from `billing_origin_product` |
-| 3.1.56 | ServiceName | Mandatory | `billing_origin_product` |
+| 3.1.54 | ServiceCategory | Mandatory | FOCUS taxonomy mapped from `billing_origin_product` |
+| 3.1.55 | ServiceName | Mandatory | `billing_origin_product` |
+| 3.1.56 | ServiceProviderName | Mandatory | `'Databricks'` |
 | 3.1.57 | ServiceSubcategory | Recommended | FOCUS taxonomy mapped from `billing_origin_product` |
 | 3.1.58 | SkuId | Conditional | `sku_name` |
 | 3.1.59 | SkuMeter | Conditional | `usage_type` |

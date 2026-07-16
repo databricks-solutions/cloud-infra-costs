@@ -379,9 +379,7 @@ SELECT
     WHEN u.billing_origin_product = 'DATA_SHARING' THEN 'Data Share'
     ELSE COALESCE(u.billing_origin_product, 'Other')
   END AS ResourceType,
-  -- 3.1.54 Service Provider Name (Mandatory - NEW in FOCUS 1.3)
-  'Databricks' AS ServiceProviderName,
-  -- 3.1.55 Service Category (Mandatory)
+  -- 3.1.54 Service Category (Mandatory)
   CASE
     -- Compute
     WHEN u.billing_origin_product IN ('ALL_PURPOSE', 'INTERACTIVE', 'NOTEBOOKS', 'SHARED_SERVERLESS_COMPUTE')
@@ -433,8 +431,10 @@ SELECT
       THEN 'Web'
     ELSE 'Other'
   END AS ServiceCategory,
-  -- 3.1.56 Service Name (Mandatory)
+  -- 3.1.55 Service Name (Mandatory)
   u.billing_origin_product AS ServiceName,
+  -- 3.1.56 Service Provider Name (Mandatory - NEW in FOCUS 1.3)
+  'Databricks' AS ServiceProviderName,
   -- 3.1.57 Service Subcategory (Recommended)
   CASE
     -- Compute
