@@ -97,114 +97,115 @@ usage_with_pricing AS (
         AND u.usage_metadata.warehouse_id = wh.warehouse_id
 )
 SELECT
-  -- 3.1 Availability Zone (Recommended)
-  -- Databricks billing is Regional; AZ data is not exposed in billing tables.
+  -- 3.1.1 Allocated Method ID (Conditional)
+  CAST(NULL AS STRING) AS AllocatedMethodId,
+  -- 3.1.2 Allocated Method Details (Recommended)
+  CAST(NULL AS STRING) AS AllocatedMethodDetails,
+  -- 3.1.3 Allocated Resource ID (Conditional)
+  CAST(NULL AS STRING) AS AllocatedResourceId,
+  -- 3.1.4 Allocated Resource Name (Conditional)
+  CAST(NULL AS STRING) AS AllocatedResourceName,
+  -- 3.1.5 Allocated Tags (Conditional)
+  CAST(NULL AS STRING) AS AllocatedTags,
+  -- 3.1.6 Availability Zone (Recommended)
   CAST(NULL AS STRING) AS AvailabilityZone,
-  -- 3.2 Billed Cost (Mandatory)
-  -- Rows with no matching price record are coerced to 0 to satisfy the Mandatory constraint.
+  -- 3.1.7 Billed Cost (Mandatory)
   CAST(COALESCE(usage_quantity * account_unit_price, 0) AS DECIMAL(30, 15)) AS BilledCost,
-  -- 3.3 Billing Account ID (Mandatory)
+  -- 3.1.8 Billing Account ID (Mandatory)
   u.account_id AS BillingAccountId,
-  -- 3.4 Billing Account Name (Mandatory)
-  -- Databricks does not expose account name in system tables; account_id is used as a placeholder.
+  -- 3.1.9 Billing Account Name (Mandatory)
   u.account_id AS BillingAccountName,
-  -- 3.5 Billing Account Type (Conditional)
+  -- 3.1.10 Billing Account Type (Conditional)
   CAST(NULL AS STRING) AS BillingAccountType,
-  -- 3.6 Billing Currency (Mandatory)
+  -- 3.1.11 Billing Currency (Mandatory)
   u.currency_code AS BillingCurrency,
-  -- 3.7 Billing Period End (Mandatory) — exclusive end of the calendar month
+  -- 3.1.12 Billing Period End (Mandatory) — exclusive end of the calendar month
   DATE_TRUNC('MONTH', u.usage_date)
   + INTERVAL 1 MONTH AS BillingPeriodEnd,
-  -- 3.8 Billing Period Start (Mandatory)
+  -- 3.1.13 Billing Period Start (Mandatory)
   DATE_TRUNC('MONTH', u.usage_date) AS BillingPeriodStart,
-  -- 3.9 Capacity Reservation ID (Conditional)
+  -- 3.1.14 Capacity Reservation ID (Conditional)
   CAST(NULL AS STRING) AS CapacityReservationId,
-  -- 3.10 Capacity Reservation Status (Conditional)
+  -- 3.1.15 Capacity Reservation Status (Conditional)
   CAST(NULL AS STRING) AS CapacityReservationStatus,
-  -- 3.11 Charge Category (Mandatory)
+  -- 3.1.16 Charge Category (Mandatory)
   'Usage' AS ChargeCategory,
-  -- 3.12 Charge Class (Mandatory)
-  -- No correction/adjustment data available in system tables.
+  -- 3.1.17 Charge Class (Mandatory)
   CAST(NULL AS STRING) AS ChargeClass,
-  -- 3.13 Charge Description (Mandatory)
+  -- 3.1.18 Charge Description (Mandatory)
   u.sku_name AS ChargeDescription,
-  -- 3.14 Charge Frequency (Recommended)
+  -- 3.1.19 Charge Frequency (Recommended)
   'Usage-Based' AS ChargeFrequency,
-  -- 3.15 Charge Period End (Mandatory)
+  -- 3.1.20 Charge Period End (Mandatory)
   u.usage_end_time AS ChargePeriodEnd,
-  -- 3.16 Charge Period Start (Mandatory)
+  -- 3.1.21 Charge Period Start (Mandatory)
   u.usage_start_time AS ChargePeriodStart,
-  -- 3.17 Commitment Discount Category (Conditional)
+  -- 3.1.22 Commitment Discount Category (Conditional)
   CAST(NULL AS STRING) AS CommitmentDiscountCategory,
-  -- 3.18 Commitment Discount ID (Conditional)
+  -- 3.1.23 Commitment Discount ID (Conditional)
   CAST(NULL AS STRING) AS CommitmentDiscountId,
-  -- 3.19 Commitment Discount Name (Conditional)
+  -- 3.1.24 Commitment Discount Name (Conditional)
   CAST(NULL AS STRING) AS CommitmentDiscountName,
-  -- 3.20 Commitment Discount Quantity (Conditional)
+  -- 3.1.25 Commitment Discount Quantity (Conditional)
   CAST(NULL AS DECIMAL(30, 15)) AS CommitmentDiscountQuantity,
-  -- 3.21 Commitment Discount Status (Conditional)
+  -- 3.1.26 Commitment Discount Status (Conditional)
   CAST(NULL AS STRING) AS CommitmentDiscountStatus,
-  -- 3.22 Commitment Discount Type (Conditional)
+  -- 3.1.27 Commitment Discount Type (Conditional)
   CAST(NULL AS STRING) AS CommitmentDiscountType,
-  -- 3.23 Commitment Discount Unit (Conditional)
+  -- 3.1.28 Commitment Discount Unit (Conditional)
   CAST(NULL AS STRING) AS CommitmentDiscountUnit,
-  -- 3.24 Consumed Quantity (Conditional)
-  -- In Databricks, usage quantity is the consumed quantity.
+  -- 3.1.29 Consumed Quantity (Conditional)
   CAST(u.usage_quantity AS DECIMAL(30, 15)) AS ConsumedQuantity,
-  -- 3.25 Consumed Unit (Conditional)
+  -- 3.1.30 Consumed Unit (Conditional)
   u.usage_unit AS ConsumedUnit,
-  -- 3.26 Contracted Cost (Mandatory)
+  -- 3.1.31 Contract Applied (Conditional)
+  CAST(NULL AS STRING) AS ContractApplied,
+  -- 3.1.32 Contracted Cost (Mandatory)
   CAST(COALESCE(usage_quantity * account_unit_price, 0) AS DECIMAL(30, 15)) AS ContractedCost,
-  -- 3.27 Contracted Unit Price (Conditional)
+  -- 3.1.33 Contracted Unit Price (Conditional)
   CAST(u.account_unit_price AS DECIMAL(30, 15)) AS ContractedUnitPrice,
-  -- 3.28 Effective Cost (Mandatory)
-  -- Without commitment discount / savings plan data, Effective Cost = Billed Cost.
+  -- 3.1.34 Effective Cost (Mandatory)
   CAST(COALESCE(usage_quantity * account_unit_price, 0) AS DECIMAL(30, 15)) AS EffectiveCost,
-  -- 3.29 Host Provider Name (Mandatory - NEW in FOCUS 1.3)
-  -- The cloud infrastructure provider hosting the Databricks workload.
+  -- 3.1.35 Host Provider Name (Mandatory - NEW in FOCUS 1.3)
   CASE u.cloud
     WHEN 'AWS' THEN 'Amazon Web Services'
     WHEN 'AZURE' THEN 'Microsoft Azure'
     WHEN 'GCP' THEN 'Google Cloud Platform'
     ELSE u.cloud
   END AS HostProviderName,
-  -- 3.30 Invoice ID (Recommended)
+  -- 3.1.36 Invoice ID (Recommended)
   CAST(NULL AS STRING) AS InvoiceId,
-  -- 3.31 Invoice Issuer Name (Mandatory)
+  -- 3.1.37 Invoice Issuer Name (Mandatory)
   'Databricks' AS InvoiceIssuerName,
-  -- 3.32 List Cost (Mandatory)
+  -- 3.1.38 List Cost (Mandatory)
   CAST(COALESCE(u.usage_quantity * u.list_unit_price, 0) AS DECIMAL(30, 15)) AS ListCost,
-  -- 3.33 List Unit Price (Conditional)
+  -- 3.1.39 List Unit Price (Conditional)
   CAST(u.list_unit_price AS DECIMAL(30, 15)) AS ListUnitPrice,
-  -- 3.34 Pricing Category (Conditional)
+  -- 3.1.40 Pricing Category (Conditional)
   'Standard' AS PricingCategory,
-  -- 3.35 Pricing Currency (Conditional)
+  -- 3.1.41 Pricing Currency (Conditional)
   u.currency_code AS PricingCurrency,
-  -- 3.36 Pricing Currency Contracted Unit Price (Conditional)
+  -- 3.1.42 Pricing Currency Contracted Unit Price (Conditional)
   CAST(u.account_unit_price AS DECIMAL(30, 15)) AS PricingCurrencyContractedUnitPrice,
-  -- 3.37 Pricing Currency Effective Cost (Conditional)
+  -- 3.1.43 Pricing Currency Effective Cost (Conditional)
   CAST(
     COALESCE(usage_quantity * account_unit_price, 0) AS DECIMAL(30, 15)
   ) AS PricingCurrencyEffectiveCost,
-  -- 3.38 Pricing Currency List Unit Price (Conditional)
+  -- 3.1.44 Pricing Currency List Unit Price (Conditional)
   CAST(u.list_unit_price AS DECIMAL(30, 15)) AS PricingCurrencyListUnitPrice,
-  -- 3.39 Pricing Quantity (Mandatory)
+  -- 3.1.45 Pricing Quantity (Mandatory)
   CAST(u.usage_quantity AS DECIMAL(30, 15)) AS PricingQuantity,
-  -- 3.40 Pricing Unit (Mandatory)
+  -- 3.1.46 Pricing Unit (Mandatory)
   u.usage_unit AS PricingUnit,
-  -- 3.41 Provider Name (DEPRECATED in FOCUS 1.3 — kept for backward compatibility)
-  -- Replaced by ServiceProviderName + HostProviderName + InvoiceIssuerName.
+  -- 3.1.47 Provider Name (DEPRECATED in FOCUS 1.3 — kept for backward compatibility)
   'Databricks' AS ProviderName,
-  -- 3.42 Publisher Name (DEPRECATED in FOCUS 1.3 — kept for backward compatibility)
-  -- Replaced by ServiceProviderName.
+  -- 3.1.48 Publisher Name (DEPRECATED in FOCUS 1.3 — kept for backward compatibility)
   'Databricks' AS PublisherName,
-  -- 3.43 Region ID (Conditional)
-  -- Note: current_metastore() returns the metastore region, not the per-workspace region.
-  -- For multi-region deployments, join workspace metadata or map workspace_url to regions.
+  -- 3.1.49 Region ID (Conditional)
   split(current_metastore(), ':')[1] AS RegionId,
-  -- 3.44 Region Name (Conditional)
+  -- 3.1.50 Region Name (Conditional)
   split(current_metastore(), ':')[1] AS RegionName,
-  -- 3.45 Resource ID (Conditional)
+  -- 3.1.51 Resource ID (Conditional)
   CASE
     WHEN
       u.billing_origin_product IN ('JOBS')
@@ -310,7 +311,7 @@ SELECT
       COALESCE(u.usage_metadata.notebook_id, u.billing_origin_product)
     ELSE u.billing_origin_product
   END AS ResourceId,
-  -- 3.46 Resource Name (Conditional)
+  -- 3.1.52 Resource Name (Conditional)
   -- Names are resolved via system table joins (pipelines, clusters, warehouses).
   -- For resources without a dedicated system table, name fields from usage_metadata are used.
   -- Falls back to the resource ID when the name is not available.
@@ -345,7 +346,7 @@ SELECT
       THEN u.usage_metadata.sharing_materialization_id
     ELSE u.billing_origin_product
   END AS ResourceName,
-  -- 3.47 Resource Type (Conditional)
+  -- 3.1.53 Resource Type (Conditional)
   CASE
     WHEN u.billing_origin_product = 'JOBS' THEN 'Job'
     WHEN u.billing_origin_product = 'DLT' THEN 'Spark Declarative Pipeline'
@@ -378,7 +379,7 @@ SELECT
     WHEN u.billing_origin_product = 'DATA_SHARING' THEN 'Data Share'
     ELSE COALESCE(u.billing_origin_product, 'Other')
   END AS ResourceType,
-  -- 3.48 Service Category (Mandatory)
+  -- 3.1.54 Service Category (Mandatory)
   CASE
     -- Compute
     WHEN u.billing_origin_product IN ('ALL_PURPOSE', 'INTERACTIVE', 'NOTEBOOKS', 'SHARED_SERVERLESS_COMPUTE')
@@ -430,11 +431,11 @@ SELECT
       THEN 'Web'
     ELSE 'Other'
   END AS ServiceCategory,
-  -- 3.49 Service Name (Mandatory)
+  -- 3.1.55 Service Name (Mandatory)
   u.billing_origin_product AS ServiceName,
-  -- 3.50 Service Provider Name (Mandatory - NEW in FOCUS 1.3)
+  -- 3.1.56 Service Provider Name (Mandatory - NEW in FOCUS 1.3)
   'Databricks' AS ServiceProviderName,
-  -- 3.51 Service Subcategory (Recommended)
+  -- 3.1.57 Service Subcategory (Recommended)
   CASE
     -- Compute
     WHEN u.billing_origin_product = 'ALL_PURPOSE'
@@ -493,11 +494,11 @@ SELECT
       THEN 'Application Platforms'
     ELSE 'Other (Other)'
   END AS ServiceSubcategory,
-  -- 3.52 SKU ID (Conditional)
+  -- 3.1.58 SKU ID (Conditional)
   u.sku_name AS SkuId,
-  -- 3.53 SKU Meter (Conditional)
+  -- 3.1.59 SKU Meter (Conditional)
   u.usage_type AS SkuMeter,
-  -- 3.54 SKU Price Details (Conditional)
+  -- 3.1.60 SKU Price Details (Conditional)
   to_json(
     map_from_entries(
       filter(
@@ -509,15 +510,15 @@ SELECT
       )
     )
   ) AS SkuPriceDetails,
-  -- 3.55 SKU Price ID (Conditional)
+  -- 3.1.61 SKU Price ID (Conditional)
   u.sku_name AS SkuPriceId,
-  -- 3.56 Sub Account ID (Conditional)
+  -- 3.1.62 Sub Account ID (Conditional)
   u.workspace_id AS SubAccountId,
-  -- 3.57 Sub Account Name (Conditional)
+  -- 3.1.63 Sub Account Name (Conditional)
   u.workspace_name AS SubAccountName,
-  -- 3.58 Sub Account Type (Conditional)
+  -- 3.1.64 Sub Account Type (Conditional)
   'Workspace' AS SubAccountType,
-  -- 3.59 Tags (Conditional)
+  -- 3.1.65 Tags (Conditional)
   u.custom_tags AS Tags
 FROM
   usage_with_pricing u;
