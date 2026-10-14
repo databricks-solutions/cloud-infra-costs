@@ -178,7 +178,7 @@ The dashboard includes the following pages:
 - **Cost Overview** - Daily cost trends by service category, cost by subscription and resource group
 - **Compute TCO** - Total cost of ownership for Databricks clusters and SQL warehouses, joined to `system.compute.clusters` and `system.compute.warehouses`
 - **Cost by Tags** - Cost analysis by Azure resource tags with configurable time granularity
-- **ADI Costs** - Azure Databricks Integration (ADI) costs from `system.billing.usage` at list price, by provider, SKU, workspace, and serving endpoint. See the [ADI cost query](adi/README.md)
+- **ADI Costs** - Azure Databricks Integration (ADI) costs from `system.billing.usage` at list price, by provider, workspace, and serving endpoint. See the [ADI cost query](adi/README.md)
 
 #### Azure FOCUS Cost Dashboard
 If the FOCUS pipeline is enabled, a separate dashboard is deployed for FOCUS-format data with:

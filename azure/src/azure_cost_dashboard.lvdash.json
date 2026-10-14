@@ -2331,7 +2331,7 @@
         },
         {
           "widget": {
-            "name": "adi-daily-by-sku",
+            "name": "adi-daily-by-endpoint",
             "queries": [
               {
                 "name": "main_query",
@@ -2339,8 +2339,8 @@
                   "datasetName": "ad1c0a57",
                   "fields": [
                     {
-                      "name": "sku_name",
-                      "expression": "`sku_name`"
+                      "name": "endpoint_name",
+                      "expression": "`endpoint_name`"
                     },
                     {
                       "name": "daily(date)",
@@ -2378,18 +2378,18 @@
                   }
                 },
                 "color": {
-                  "fieldName": "sku_name",
+                  "fieldName": "endpoint_name",
                   "scale": {
                     "type": "categorical"
                   },
                   "legend": {
-                    "title": "SKU"
+                    "title": "Endpoint"
                   }
                 }
               },
               "frame": {
                 "showTitle": true,
-                "title": "Daily ADI cost by SKU"
+                "title": "Daily ADI cost by serving endpoint"
               }
             }
           },
