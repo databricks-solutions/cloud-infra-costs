@@ -263,6 +263,77 @@
         "  'No'\n",
         ")) as toggle\n"
       ]
+    },
+    {
+      "name": "ad1c0a57",
+      "displayName": "ADI Costs",
+      "queryLines": [
+        "-- Azure Databricks Integration (ADI) Cost Query\n",
+        "-- Compatible with Databricks SQL and Unity Catalog\n",
+        "--\n",
+        "-- ADI charges are billed directly by Databricks, not through the Azure invoice, so they do\n",
+        "-- not appear in Azure Cost Management exports. This query filters system.billing.usage to\n",
+        "-- ADI SKUs and prices them with system.billing.list_prices.\n",
+        "--\n",
+        "-- Usage: Run in Databricks SQL or a notebook. To pick up new ADI services, add their SKU\n",
+        "--        prefixes to the adi_skus list below. Prefixes also match any regional SKU variants.\n",
+        "--        The list of ADI Services is maintained at\n",
+        "--        https://learn.microsoft.com/en-us/azure/databricks/machine-learning/foundation-model-apis/supported-models\n",
+        "--\n",
+        "-- Note: Anthropic models use a similar SKU (PREMIUM_ANTHROPIC_MODEL_SERVING) but are not ADI\n",
+        "--       Services. They are billed through the Azure invoice and appear in Azure Cost Management\n",
+        "--       exports, so they are intentionally excluded here.\n",
+        "WITH adi_skus AS (\n",
+        "  SELECT * FROM VALUES\n",
+        "    ('PREMIUM_OPENAI_MODEL_SERVING', 'OpenAI'),\n",
+        "    ('PREMIUM_GEMINI_MODEL_SERVING', 'Google Gemini'),\n",
+        "    ('PREMIUM_ZHIPU_MODEL_SERVING', 'Zhipu AI'),\n",
+        "    ('PREMIUM_MOONSHOT_MODEL_SERVING', 'Moonshot AI'),\n",
+        "    ('PREMIUM_THINKING_MACHINES_MODEL_SERVING', 'Thinking Machines Lab'),\n",
+        "    ('PREMIUM_DEEPSEEK_MODEL_SERVING', 'DeepSeek')\n",
+        "    AS t(sku_prefix, provider)\n",
+        "),\n",
+        "list_prices AS (\n",
+        "  SELECT coalesce(price_end_time, date_add(current_date, 1)) AS coalesced_price_end_time, *\n",
+        "  FROM system.billing.list_prices\n",
+        "  WHERE currency_code = 'USD'\n",
+        ")\n",
+        "SELECT\n",
+        "  u.usage_date AS date,\n",
+        "  u.usage_start_time,\n",
+        "  u.usage_end_time,\n",
+        "  u.account_id,\n",
+        "  u.workspace_id,\n",
+        "  w.workspace_name,\n",
+        "  s.provider,\n",
+        "  u.sku_name,\n",
+        "  u.billing_origin_product,\n",
+        "  u.usage_metadata.endpoint_name AS endpoint_name,\n",
+        "  u.usage_metadata.endpoint_id AS endpoint_id,\n",
+        "  u.identity_metadata.run_as AS run_as,\n",
+        "  u.usage_quantity,\n",
+        "  u.usage_unit,\n",
+        "  lp.currency_code,\n",
+        "  CAST(lp.pricing.default AS DECIMAL(30, 15)) AS list_unit_price,\n",
+        "  CAST(COALESCE(u.usage_quantity * lp.pricing.default, 0) AS DECIMAL(30, 15)) AS price,\n",
+        "  u.custom_tags,\n",
+        "  u.record_id\n",
+        "FROM\n",
+        "  system.billing.usage u\n",
+        "    INNER JOIN adi_skus s\n",
+        "      ON startswith(u.sku_name, s.sku_prefix)\n",
+        "    LEFT JOIN list_prices lp\n",
+        "      ON u.sku_name = lp.sku_name\n",
+        "      AND u.usage_unit = lp.usage_unit\n",
+        "      AND u.account_id = lp.account_id\n",
+        "      -- Match usage time to the valid price window\n",
+        "      AND u.usage_end_time BETWEEN lp.price_start_time AND lp.coalesced_price_end_time\n",
+        "    LEFT JOIN system.access.workspaces_latest w\n",
+        "      ON u.account_id = w.account_id\n",
+        "      AND u.workspace_id = w.workspace_id\n",
+        "WHERE\n",
+        "  u.cloud = 'AZURE'"
+      ]
     }
   ],
   "pages": [
@@ -1172,6 +1243,23 @@
                   ],
                   "disaggregated": false
                 }
+              },
+              {
+                "name": "adi_costs_date",
+                "query": {
+                  "datasetName": "ad1c0a57",
+                  "fields": [
+                    {
+                      "name": "date",
+                      "expression": "`date`"
+                    },
+                    {
+                      "name": "date_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
               }
             ],
             "spec": {
@@ -1190,6 +1278,10 @@
                   {
                     "fieldName": "time_key",
                     "queryName": "dashboards/01f0ac6b8fb41077a3a57223e5203976/datasets/01f0ad345aa31caf8ae61826823ffa8d_time_key"
+                  },
+                  {
+                    "fieldName": "date",
+                    "queryName": "adi_costs_date"
                   }
                 ]
               },
@@ -1884,6 +1976,530 @@
         }
       ],
       "pageType": "PAGE_TYPE_CANVAS"
+    },
+    {
+      "name": "adi0page",
+      "displayName": "ADI Costs",
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layout": [
+        {
+          "widget": {
+            "name": "adi-header",
+            "multilineTextboxSpec": {
+              "lines": [
+                "<span style=\"font-size:24px;font-family:Tahoma\">**Azure Databricks Integration (ADI) Costs**</span>\n",
+                "\n",
+                "- <span style=\"font-size:12px;font-family:Tahoma\">ADI services (e.g. OpenAI and Gemini models) are billed directly by Databricks and do not appear in Azure Cost Management exports</span>\n",
+                "- <span style=\"font-size:12px;font-family:Tahoma\">Costs on this page come from `system.billing.usage` joined to `system.billing.list_prices`, so they reflect list price, not negotiated rates</span>\n",
+                "- <span style=\"font-size:12px;font-family:Tahoma\">ADI SKUs are matched against a fixed list in the dataset query (OpenAI, Gemini, Zhipu, Moonshot, Thinking Machines, DeepSeek). The list of [ADI Services](https://learn.microsoft.com/en-us/azure/databricks/machine-learning/foundation-model-apis/supported-models) can change, so new SKUs must be added to the query to be reported here</span>\n",
+                "- <span style=\"font-size:12px;font-family:Tahoma\">The Cost Type, Meter Category, and Vendor global filters do not apply to this page</span>"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 6,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "adi-total-cost",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ad1c0a57",
+                  "fields": [
+                    {
+                      "name": "sum(price)",
+                      "expression": "SUM(`price`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(price)"
+                }
+              },
+              "frame": {
+                "title": "Total ADI costs (list price)",
+                "showTitle": true
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 3,
+            "width": 2,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "adi-endpoints",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ad1c0a57",
+                  "fields": [
+                    {
+                      "name": "countdistinct(endpoint_name)",
+                      "expression": "COUNT(DISTINCT `endpoint_name`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "countdistinct(endpoint_name)"
+                }
+              },
+              "frame": {
+                "title": "Serving endpoints",
+                "showTitle": true
+              }
+            }
+          },
+          "position": {
+            "x": 2,
+            "y": 3,
+            "width": 2,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "adi-workspaces",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ad1c0a57",
+                  "fields": [
+                    {
+                      "name": "countdistinct(workspace_id)",
+                      "expression": "COUNT(DISTINCT `workspace_id`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "countdistinct(workspace_id)"
+                }
+              },
+              "frame": {
+                "title": "Workspaces",
+                "showTitle": true
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 3,
+            "width": 2,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "adi-filter-provider",
+            "queries": [
+              {
+                "name": "adi_costs_provider",
+                "query": {
+                  "datasetName": "ad1c0a57",
+                  "fields": [
+                    {
+                      "name": "provider",
+                      "expression": "`provider`"
+                    },
+                    {
+                      "name": "provider_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-single-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "provider",
+                    "queryName": "adi_costs_provider"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Provider"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 5,
+            "width": 2,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "adi-filter-workspace",
+            "queries": [
+              {
+                "name": "adi_costs_workspace_name",
+                "query": {
+                  "datasetName": "ad1c0a57",
+                  "fields": [
+                    {
+                      "name": "workspace_name",
+                      "expression": "`workspace_name`"
+                    },
+                    {
+                      "name": "workspace_name_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-single-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "workspace_name",
+                    "queryName": "adi_costs_workspace_name"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Workspace"
+              }
+            }
+          },
+          "position": {
+            "x": 2,
+            "y": 5,
+            "width": 2,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "adi-filter-endpoint",
+            "queries": [
+              {
+                "name": "adi_costs_endpoint_name",
+                "query": {
+                  "datasetName": "ad1c0a57",
+                  "fields": [
+                    {
+                      "name": "endpoint_name",
+                      "expression": "`endpoint_name`"
+                    },
+                    {
+                      "name": "endpoint_name_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-single-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "endpoint_name",
+                    "queryName": "adi_costs_endpoint_name"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Endpoint"
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 5,
+            "width": 2,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "adi-daily-by-provider",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ad1c0a57",
+                  "fields": [
+                    {
+                      "name": "provider",
+                      "expression": "`provider`"
+                    },
+                    {
+                      "name": "daily(date)",
+                      "expression": "DATE_TRUNC(\"DAY\", `date`)"
+                    },
+                    {
+                      "name": "sum(price)",
+                      "expression": "SUM(`price`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "daily(date)",
+                  "scale": {
+                    "type": "temporal"
+                  },
+                  "axis": {
+                    "title": "Date"
+                  }
+                },
+                "y": {
+                  "fieldName": "sum(price)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "axis": {
+                    "title": "List Cost (USD)"
+                  }
+                },
+                "color": {
+                  "fieldName": "provider",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "legend": {
+                    "title": "Provider"
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Daily ADI cost by provider"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 6,
+            "width": 6,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "adi-daily-by-sku",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ad1c0a57",
+                  "fields": [
+                    {
+                      "name": "sku_name",
+                      "expression": "`sku_name`"
+                    },
+                    {
+                      "name": "daily(date)",
+                      "expression": "DATE_TRUNC(\"DAY\", `date`)"
+                    },
+                    {
+                      "name": "sum(price)",
+                      "expression": "SUM(`price`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "daily(date)",
+                  "scale": {
+                    "type": "temporal"
+                  },
+                  "axis": {
+                    "title": "Date"
+                  }
+                },
+                "y": {
+                  "fieldName": "sum(price)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "axis": {
+                    "title": "List Cost (USD)"
+                  }
+                },
+                "color": {
+                  "fieldName": "sku_name",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "legend": {
+                    "title": "SKU"
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Daily ADI cost by SKU"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 12,
+            "width": 6,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "adi-cost-by-endpoint",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ad1c0a57",
+                  "fields": [
+                    {
+                      "name": "workspace_name",
+                      "expression": "`workspace_name`"
+                    },
+                    {
+                      "name": "endpoint_name",
+                      "expression": "`endpoint_name`"
+                    },
+                    {
+                      "name": "provider",
+                      "expression": "`provider`"
+                    },
+                    {
+                      "name": "sum(price)",
+                      "expression": "SUM(`price`)"
+                    }
+                  ],
+                  "cubeGroupingSets": {
+                    "sets": [
+                      {
+                        "fieldNames": [
+                          "workspace_name",
+                          "endpoint_name"
+                        ]
+                      },
+                      {
+                        "fieldNames": [
+                          "provider"
+                        ]
+                      }
+                    ]
+                  },
+                  "disaggregated": false,
+                  "orders": [
+                    {
+                      "direction": "ASC",
+                      "expression": "`workspace_name`"
+                    },
+                    {
+                      "direction": "ASC",
+                      "expression": "`endpoint_name`"
+                    },
+                    {
+                      "direction": "ASC",
+                      "expression": "`provider`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "pivot",
+              "encodings": {
+                "rows": [
+                  {
+                    "fieldName": "workspace_name"
+                  },
+                  {
+                    "fieldName": "endpoint_name"
+                  }
+                ],
+                "columns": [
+                  {
+                    "fieldName": "provider"
+                  }
+                ],
+                "cell": {
+                  "type": "multi-cell",
+                  "fields": [
+                    {
+                      "fieldName": "sum(price)",
+                      "cellType": "text"
+                    }
+                  ]
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "ADI cost by workspace and endpoint"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 18,
+            "width": 6,
+            "height": 6
+          }
+        }
+      ]
     }
   ],
   "uiSettings": {
