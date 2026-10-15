@@ -6,7 +6,7 @@ This solution helps automate and simplify this process - with it, users can repo
 The [`focus/`](focus/README.md) query produces a FOCUS 1.4-conformant Cost and Usage dataset from Databricks system tables, listed on the [FinOps Foundation site](https://focus.finops.org/) as a FOCUS data generator.
 
 These four pieces can be used independently or in combination:
-- [**Azure**](azure/README.md) — unifies Azure Cost Management exports (Actuals, Amortized, FOCUS) with Databricks system tables.
+- [**Azure**](azure/README.md) — unifies Azure Cost Management exports (Actuals, Amortized, FOCUS) with Databricks system tables, including [ADI](azure/adi/README.md) costs billed directly by Databricks.
 - [**AWS**](aws/README.md) — unifies AWS CUR with Databricks system tables.
 - [**GCP**](gcp/README.md) — unifies GCP billing exports with Databricks system tables, delivered as a Databricks Asset Bundle (ingestion pipeline, dashboard, and job).
 - [**FOCUS 1.4**](focus/README.md) — produces a FOCUS 1.4-conformant [FinOps Open Cost and Usage Specification](https://focus.finops.org/focus-specification/v1-4/) dataset from Databricks system tables. Recommended if you want a single, standardized schema across cloud providers.

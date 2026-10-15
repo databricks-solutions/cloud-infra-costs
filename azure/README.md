@@ -35,6 +35,9 @@ Azure Cost Export (Storage Account)
   └── azure-focus-cost/        → FOCUS SDP Pipeline     → focus_bronze → focus_silver → focus_gold
                                                                                               │
                                                               Dashboards & Genie Space ◄──────┘
+
+System Tables
+  └── system.billing.usage (ADI SKUs) + system.billing.list_prices → ADI Costs dashboard page
 ```
 
 Each pipeline follows the medallion architecture:
@@ -179,6 +182,8 @@ The dashboard includes the following pages:
 - **Compute TCO** - Total cost of ownership for Databricks clusters and SQL warehouses, joined to `system.compute.clusters` and `system.compute.warehouses`
 - **Cost by Tags** - Cost analysis by Azure resource tags with configurable time granularity
 - **ADI Costs** - Azure Databricks Integration (ADI) costs from `system.billing.usage` at list price, by provider, workspace, and serving endpoint. See the [ADI cost query](adi/README.md)
+
+The **ADI Costs** page reads directly from system tables rather than the Azure Cost Management exports. The identity whose credentials the dashboard runs with (the publisher, since credentials are embedded by default) needs `SELECT` on `system.billing.usage`, `system.billing.list_prices`, and `system.access.workspaces_latest`, or the page will be empty.
 
 #### Azure FOCUS Cost Dashboard
 If the FOCUS pipeline is enabled, a separate dashboard is deployed for FOCUS-format data with:
