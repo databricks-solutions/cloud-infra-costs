@@ -26,7 +26,7 @@ ADI charges are identified by SKU. The query matches usage whose SKU starts with
 
 The current list of ADI Services is maintained in the [Azure Databricks supported models documentation](https://learn.microsoft.com/en-us/azure/databricks/machine-learning/foundation-model-apis/supported-models).
 
-> **Note:** Anthropic models are billed with a similarly named SKU (`PREMIUM_ANTHROPIC_MODEL_SERVING`) but are **not** ADI Services. Anthropic usage is billed through the Azure invoice, already appears in Azure Cost Management exports, and is intentionally excluded from this query to avoid double counting.
+> **Note:** Anthropic models are billed with a similarly named SKU (`PREMIUM_ANTHROPIC_MODEL_SERVING`) but are **not** [ADI Services](https://docs.databricks.com/adi). Anthropic usage is billed through the Azure invoice, already appears in Azure Cost Management exports, and is intentionally excluded from this query to avoid double counting.
 
 As new services are added to ADI, add their SKU prefixes to the `adi_skus` list in both `adi_cost_query.sql` and the **ADI Costs** dataset in `azure/src/azure_cost_dashboard.lvdash.json`.
 
@@ -55,3 +55,4 @@ Run the query in Databricks SQL or a notebook. No parameters are required.
 
 - Costs are calculated at **list price** and do not reflect negotiated discounts.
 - The global **Cost Type**, **Meter Category**, and **Vendor** filters on the Azure Cost Dashboard apply to Azure Cost Management data only and do not affect the ADI Costs page. The **Date** filter applies to all pages.
+- ADI charges are identified by SKU name only; `system.billing.usage` has no field that marks a charge as ADI. ADI SKU naming is still evolving, so periodically validate the `adi_skus` list against the SKUs in `system.billing.usage`.
