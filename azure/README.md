@@ -9,6 +9,7 @@ The 'azure_cost' project's purpose is to help enable customers to get a full TCO
 - Includes any discounts a customer might have given their enterprise agreement with Microsoft.
 - Cost data can be joined to other [system tables](https://learn.microsoft.com/en-us/azure/databricks/admin/system-tables/), such as [system.compute.clusters](https://learn.microsoft.com/en-us/azure/databricks/admin/system-tables/compute#cluster-table-schema), [system.compute.warehouses](https://learn.microsoft.com/en-us/azure/databricks/admin/system-tables/compute#warehouse-table-schema), and [system.lakeflow.jobs](https://learn.microsoft.com/en-us/azure/databricks/admin/system-tables/lakeflow-jobs) for TCO analysis by cluster, warehouse, or job.
 - Supports three Azure Cost Export formats: **Actuals**, **Amortized**, and **FOCUS** (FinOps Open Cost and Usage Specification).
+- Reports [Azure Databricks Integration (ADI)](adi/README.md) costs (e.g. OpenAI and Gemini models), which are billed directly by Databricks and do not appear in Azure Cost Management exports.
 - Includes an AI/BI Genie space for natural language cost exploration, including TCO by job/cluster/warehouse, serverless vs classic cost comparison, and top-N cost analysis.
 
 ## Solution Architecture
@@ -20,7 +21,7 @@ The solution consists of the following components:
 | **Actuals Pipeline** (`azure_cost_pipeline`) | Streaming Declarative Pipeline (SDP) that ingests Azure Actuals cost export data through a bronze/silver/gold medallion architecture. |
 | **Amortized Pipeline** (`azure_amortized_pipeline`) | Optional SDP for Amortized cost data. Same schema as actuals but with reservation costs spread across the usage period. Paused by default. |
 | **FOCUS Pipeline** (`azure_focus_pipeline`) | Optional SDP for FOCUS-format cost data. Uses standardized FinOps column names (BilledCost, EffectiveCost, ServiceName, etc.). Paused by default. |
-| **Azure Cost Dashboard** | Lakeview dashboard with a global Cost Type filter to toggle between Actuals and Amortized views. Includes pages for cost overview, compute TCO (joined to system tables), and cost-by-tags analysis. |
+| **Azure Cost Dashboard** | Lakeview dashboard with a global Cost Type filter to toggle between Actuals and Amortized views. Includes pages for cost overview, compute TCO (joined to system tables), cost-by-tags analysis, and ADI costs. |
 | **Azure FOCUS Cost Dashboard** | Separate Lakeview dashboard for FOCUS-format data with cost overview and resource analysis pages. |
 | **File Arrival Jobs** | Each pipeline has a dedicated file arrival trigger job that monitors its respective export directory in the volume. Amortized and FOCUS jobs are paused by default. |
 | **Genie Space** | AI/BI Genie space (manual import) for natural language cost exploration across all three formats. Supports TCO by job, cluster, or warehouse, serverless vs classic comparison, and top-N analysis. |
@@ -34,6 +35,9 @@ Azure Cost Export (Storage Account)
   └── azure-focus-cost/        → FOCUS SDP Pipeline     → focus_bronze → focus_silver → focus_gold
                                                                                               │
                                                               Dashboards & Genie Space ◄──────┘
+
+System Tables
+  └── system.billing.usage (ADI SKUs) + system.billing.list_prices → ADI Costs dashboard page
 ```
 
 Each pipeline follows the medallion architecture:
@@ -177,6 +181,9 @@ The dashboard includes the following pages:
 - **Cost Overview** - Daily cost trends by service category, cost by subscription and resource group
 - **Compute TCO** - Total cost of ownership for Databricks clusters and SQL warehouses, joined to `system.compute.clusters` and `system.compute.warehouses`
 - **Cost by Tags** - Cost analysis by Azure resource tags with configurable time granularity
+- **ADI Costs** - Azure Databricks Integration (ADI) costs from `system.billing.usage` at list price, by provider, workspace, and serving endpoint. See the [ADI cost query](adi/README.md)
+
+The **ADI Costs** page reads directly from system tables rather than the Azure Cost Management exports. The identity whose credentials the dashboard runs with (the publisher, since credentials are embedded by default) needs `SELECT` on `system.billing.usage`, `system.billing.list_prices`, and `system.access.workspaces_latest`, or the page will be empty.
 
 #### Azure FOCUS Cost Dashboard
 If the FOCUS pipeline is enabled, a separate dashboard is deployed for FOCUS-format data with:
