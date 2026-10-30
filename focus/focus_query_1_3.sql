@@ -286,11 +286,11 @@ SELECT
     THEN
       COALESCE(u.usage_metadata.dlt_pipeline_id, u.billing_origin_product)
     WHEN
-      u.billing_origin_product = 'SQL'
+      u.billing_origin_product IN ('SQL', 'LAKEHOUSE_REAL_TIME')
     THEN
       COALESCE(u.usage_metadata.warehouse_id, u.billing_origin_product)
     WHEN
-      u.billing_origin_product = 'AGENT_BRICKS'
+      u.billing_origin_product IN ('AGENT_BRICKS', 'SUPERVISOR_AGENT')
     THEN
       COALESCE(u.usage_metadata.agent_bricks_id, u.billing_origin_product)
     WHEN
@@ -336,7 +336,7 @@ SELECT
       THEN u.usage_metadata.ai_runtime_workload_id
     WHEN u.billing_origin_product = 'DATABASE'
       THEN u.usage_metadata.database_instance_id
-    WHEN u.billing_origin_product = 'AGENT_BRICKS'
+    WHEN u.billing_origin_product IN ('AGENT_BRICKS', 'SUPERVISOR_AGENT')
       THEN u.usage_metadata.agent_bricks_id
     WHEN u.billing_origin_product = 'CLEAN_ROOM'
       THEN u.usage_metadata.central_clean_room_id
@@ -362,8 +362,13 @@ SELECT
     WHEN u.billing_origin_product = 'FOUNDATION_MODEL_TRAINING' THEN 'Foundation Model Training Run'
     WHEN u.billing_origin_product = 'AGENT_EVALUATION' THEN 'Agent Evaluation'
     WHEN u.billing_origin_product = 'AGENT_BRICKS' THEN 'Agent'
+    WHEN u.billing_origin_product = 'SUPERVISOR_AGENT' THEN 'Agent'
+    WHEN u.billing_origin_product = 'GENIE' THEN 'Genie Agent'
+    WHEN u.billing_origin_product = 'FEATURE_STORE' THEN 'Feature Store'
     WHEN u.billing_origin_product = 'AI_RUNTIME' THEN 'AI Runtime Workload'
     WHEN u.billing_origin_product = 'DATABASE' THEN 'Database Instance'
+    WHEN u.billing_origin_product = 'LAKEBASE' THEN 'Database Project'
+    WHEN u.billing_origin_product = 'LAKEHOUSE_REAL_TIME' THEN 'Real-Time Workload'
     WHEN u.billing_origin_product = 'ONLINE_TABLES' THEN 'Online Table'
     WHEN u.billing_origin_product = 'DEFAULT_STORAGE' THEN 'Storage'
     WHEN u.billing_origin_product = 'LAKEHOUSE_MONITORING' THEN 'Lakehouse Monitoring'
@@ -377,6 +382,7 @@ SELECT
     WHEN u.billing_origin_product = 'BASE_ENVIRONMENTS' THEN 'Base Environment'
     WHEN u.billing_origin_product = 'APPS' THEN 'Application'
     WHEN u.billing_origin_product = 'DATA_SHARING' THEN 'Data Share'
+    WHEN u.billing_origin_product = 'DISASTER_RECOVERY' THEN 'Disaster Recovery'
     ELSE COALESCE(u.billing_origin_product, 'Other')
   END AS ResourceType,
   -- 3.1.54 Service Category (Mandatory)
@@ -396,14 +402,17 @@ SELECT
       'AI_GATEWAY',
       'AI_FUNCTIONS',
       'AGENT_BRICKS',
-      'AI_RUNTIME'
+      'AI_RUNTIME',
+      'SUPERVISOR_AGENT',
+      'GENIE',
+      'FEATURE_STORE'
     )
       THEN 'AI and Machine Learning'
     -- Storage
     WHEN u.billing_origin_product IN ('DEFAULT_STORAGE')
       THEN 'Storage'
     -- Databases
-    WHEN u.billing_origin_product IN ('DATABASE', 'ONLINE_TABLES', 'SQL')
+    WHEN u.billing_origin_product IN ('DATABASE', 'LAKEBASE', 'ONLINE_TABLES', 'SQL', 'LAKEHOUSE_REAL_TIME')
       THEN 'Databases'
     -- Management and Governance
     WHEN u.billing_origin_product IN (
@@ -411,7 +420,8 @@ SELECT
       'DATA_QUALITY_MONITORING',
       'PREDICTIVE_OPTIMIZATION',
       'CLEAN_ROOM',
-      'DATA_SHARING'
+      'DATA_SHARING',
+      'DISASTER_RECOVERY'
     )
       THEN 'Management and Governance'
     -- Security
@@ -454,8 +464,10 @@ SELECT
     -- AI and Machine Learning
     WHEN u.billing_origin_product = 'MODEL_SERVING'
       THEN 'AI Platforms'
-    WHEN u.billing_origin_product IN ('FOUNDATION_MODEL_TRAINING', 'AGENT_BRICKS', 'AI_RUNTIME')
+    WHEN u.billing_origin_product IN ('FOUNDATION_MODEL_TRAINING', 'AGENT_BRICKS', 'AI_RUNTIME', 'SUPERVISOR_AGENT', 'GENIE')
       THEN 'Generative AI'
+    WHEN u.billing_origin_product = 'FEATURE_STORE'
+      THEN 'Machine Learning'
     WHEN u.billing_origin_product IN ('AI_GATEWAY', 'AI_FUNCTIONS')
       THEN 'AI Platforms'
     WHEN u.billing_origin_product IN ('VECTOR_SEARCH', 'AGENT_EVALUATION')
@@ -464,15 +476,17 @@ SELECT
     WHEN u.billing_origin_product = 'DEFAULT_STORAGE'
       THEN 'Object Storage'
     -- Databases
-    WHEN u.billing_origin_product = 'SQL'
+    WHEN u.billing_origin_product IN ('SQL', 'LAKEHOUSE_REAL_TIME')
       THEN 'Data Warehouses'
-    WHEN u.billing_origin_product IN ('DATABASE', 'ONLINE_TABLES')
+    WHEN u.billing_origin_product IN ('DATABASE', 'LAKEBASE', 'ONLINE_TABLES')
       THEN 'Relational Databases'
     -- Management and Governance
     WHEN u.billing_origin_product IN ('LAKEHOUSE_MONITORING', 'DATA_QUALITY_MONITORING')
       THEN 'Observability'
     WHEN u.billing_origin_product = 'PREDICTIVE_OPTIMIZATION'
       THEN 'Cost Management'
+    WHEN u.billing_origin_product = 'DISASTER_RECOVERY'
+      THEN 'Disaster Recovery'
     WHEN u.billing_origin_product IN ('CLEAN_ROOM', 'DATA_SHARING')
       THEN 'Other (Management and Governance)'
     -- Security
