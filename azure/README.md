@@ -6,7 +6,7 @@ The 'azure_cost' project's purpose is to help enable customers to get a full TCO
 
 ## Key Outcomes:
 - Visualize Azure cost data including infrastructure, networking, and other costs in addition to Databricks costs.
-- Includes any discounts a customer might have given their enterprise agreement with Microsoft.
+- Reports cost the way Azure Cost Management does, including negotiated EA/MCA discounts and reservation, savings plan, and Azure Databricks pre-purchase (DBCU) benefits.
 - Cost data can be joined to other [system tables](https://learn.microsoft.com/en-us/azure/databricks/admin/system-tables/), such as [system.compute.clusters](https://learn.microsoft.com/en-us/azure/databricks/admin/system-tables/compute#cluster-table-schema), [system.compute.warehouses](https://learn.microsoft.com/en-us/azure/databricks/admin/system-tables/compute#warehouse-table-schema), and [system.lakeflow.jobs](https://learn.microsoft.com/en-us/azure/databricks/admin/system-tables/lakeflow-jobs) for TCO analysis by cluster, warehouse, or job.
 - Supports three Azure Cost Export formats: **Actuals**, **Amortized**, and **FOCUS** (FinOps Open Cost and Usage Specification).
 - Reports [Azure Databricks Integration (ADI)](adi/README.md) costs (e.g. OpenAI and Gemini models), which are billed directly by Databricks and do not appear in Azure Cost Management exports.
@@ -43,7 +43,49 @@ System Tables
 Each pipeline follows the medallion architecture:
 - **Bronze**: Raw ingestion via AutoLoader (`read_files`) with source file metadata.
 - **Silver**: Parsed dates, extracted billing period and ingestion date from file paths, and parsed JSON tags into a VARIANT column.
-- **Gold**: Deduplicated by billing period (keeps latest ingestion date using `RANK()` window function), pre-calculated price column, and vendor tag extraction.
+- **Gold**: Deduplicated by billing period (keeps latest ingestion date using `RANK()` window function), `price` (the cost Azure Cost Management reports), `contracted_cost` (cost before commitment benefits), the pricing and benefit columns, and vendor tag extraction.
+
+### Cost Columns and Commitments (Reservations, Savings Plans, DBCU)
+
+The Actuals and Amortized gold tables expose two cost columns:
+
+| Column | Definition | Use it for |
+| ------ | ---------- | ---------- |
+| `price` | `costInBillingCurrency` from the export (configurable with `cost_column`): cost in billing currency, before credits and taxes | Spend reporting. `SUM(price)` matches Cost Management **Actual cost** (Actuals table) or **Amortized cost** (Amortized table) for the same scope |
+| `contracted_cost` | `quantity * unitPrice`: cost at your negotiated rate before any reservation, savings plan, or pre-purchase benefit (the previous `price` formula). For MCA it is in the pricing currency, not the billing currency | Estimating commitment savings: `SUM(contracted_cost) - SUM(price)` on the Amortized table |
+
+How commitments show up in each table:
+- **Actuals**: the reservation, savings plan, or DBCU purchase is a single `chargeType = 'Purchase'` row on the purchase date, and usage covered by it has `price = 0`. Totals spike in the purchase month.
+- **Amortized**: there are no purchase rows. Covered usage carries its prorated share of the purchase, and unused commitment appears as `chargeType = 'UnusedReservation'` rows.
+- Never add the Actuals and Amortized tables together; they describe the same spend two ways.
+
+Things to know when reconciling:
+- **Export scope**: purchase rows and rounding adjustments are only guaranteed in exports scoped to the billing account or billing profile (MCA) or enrollment (EA). Totals from a subscription-scoped export may not tie out to the invoice.
+- **Currency**: `price` is in the billing currency (`billingCurrency`). For MCA, `unitPrice`, `effectivePrice`, and therefore `contracted_cost` are in the pricing currency (often USD), so compare `contracted_cost` to `price` only when the two currencies match. For EA, Spot VM rows are priced in USD regardless of billing currency.
+- **DBCU is not 1:1 with DBUs**: pre-purchased Databricks commit units are drawn down at workload- and tier-specific rates, so DBCU utilization can't be computed from DBU `quantity`. Use the reservation utilization in the Azure portal.
+- The FOCUS pipeline exposes the same concepts as `BilledCost` (Actuals), `EffectiveCost` (Amortized), and `ContractedCost`, and can be used to cross-check.
+
+### Interpreting the Cost Data: Which Deals Show Up as a Lower Price
+
+The export prices usage before credits and taxes. Deals that change the price of usage are reflected in the cost columns; deals that are applied at invoice time are not.
+
+| Deal | Shows up as a lower price? | Where |
+| ---- | -------------------------- | ----- |
+| Negotiated EA/MCA discounts | Yes | `unitPrice`, so in both `price` and `contracted_cost` |
+| Reservations, savings plans, Azure Databricks pre-purchase (DBCU) | Yes | `price` and `effectivePrice` (prorated in Amortized, purchase row plus $0 covered usage in Actuals). Not in `contracted_cost` |
+| Microsoft Azure Consumption Commitment (MACC) | No | A spend commitment, not a discount. Eligible charges are billed normally and decrement the commitment; any discount agreed alongside a MACC is already in `unitPrice`. How much of the commitment remains isn't in the export; see the MACC page in Cost Management + Billing or the Consumption API |
+| Azure Prepayment (formerly monetary commitment) | No | Prepaid funds applied to the invoice |
+| Azure credits | No | Applied to the invoice, so `price` can be higher than the amount invoiced |
+| Taxes | No | Not included in the export |
+
+Azure Databricks Integration (ADI) charges are billed by Databricks rather than Microsoft and are not in the export at all; see the [ADI cost query](adi/README.md).
+
+Microsoft references:
+- [Understand usage details fields](https://learn.microsoft.com/en-us/azure/cost-management-billing/automate/understand-usage-details-fields): column definitions and how to reconcile cost
+- [Understand Azure reservations usage for EA and MCA](https://learn.microsoft.com/en-us/azure/cost-management-billing/reservations/understand-reserved-instance-usage-ea): Actual vs Amortized for reservations
+- [How an Azure Databricks pre-purchase discount is applied](https://learn.microsoft.com/en-us/azure/cost-management-billing/reservations/reservation-discount-databricks)
+- [Track your Microsoft Azure Consumption Commitment (MACC)](https://learn.microsoft.com/en-us/azure/cost-management-billing/benefits/macc/track-consumption-commitment)
+- [Review your Azure Enterprise Agreement bill](https://learn.microsoft.com/en-us/azure/cost-management-billing/understand/review-enterprise-agreement-bill): Azure Prepayment and credits
 
 ## Deployment Steps
 ### Deploy Terraform to configure dependent components
@@ -87,7 +129,7 @@ The Azure Cost Export functionality supports three dataset types. Create one or 
 
 | Export Type | Description | Export Directory Name |
 | ----------- | ----------- | -------------------- |
-| **Actuals** (required) | Actual billed costs as invoiced by Azure | `azure-actual-cost` |
+| **Actuals** (required) | Actual billed costs, with reservation and pre-purchase purchases on the purchase date | `azure-actual-cost` |
 | **Amortized** (optional) | Costs with reservation/commitment purchases spread across the usage period | `azure-amortized-cost` |
 | **FOCUS** (optional) | FinOps FOCUS standard format with standardized column names | `azure-focus-cost` |
 
@@ -138,6 +180,7 @@ First, DAB needs to be configured so that it deploys to the correct Databricks w
 | source_file_path | Location in Volume where AutoLoader is reading Cost Export files from | `${var.volume_path}azure-actual-cost/*/*/*/*.parquet` |
 | billing_period_depth | Pipeline uses split_part to extract billing period (e.g. 20250901-20250930) from file source_file_path | `7` |
 | ingestion_date_depth | Pipeline uses split_part to extract ingestion date (e.g. 202509081628) from file source_file_path | `8` |
+| cost_column | Export column used as the gold `price` for the Actuals and Amortized pipelines. Use `cost` for older exports that lack `costInBillingCurrency` | `costInBillingCurrency` |
 | warehouse_id | Id of SQL warehouse that the dashboard uses | N/A - Must be specified |
 
 #### Amortized Pipeline Variables (Optional)
