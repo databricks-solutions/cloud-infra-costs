@@ -34,9 +34,16 @@
         "  w.warehouse_size AS warehouse_size,\n",
         "  w.tags AS warehouse_tags\n",
         "FROM IDENTIFIER(CASE WHEN :param_cost_dataset = 'Amortized' THEN 'billing.azure.amortized_gold' ELSE 'billing.azure.actuals_gold' END) ag\n",
-        "LEFT JOIN system.compute.clusters c\n",
+        "LEFT JOIN (\n",
+        "  -- system.compute.clusters keeps one row per configuration change; keep the latest so each cost row joins once\n",
+        "  SELECT * FROM system.compute.clusters\n",
+        "  QUALIFY ROW_NUMBER() OVER (PARTITION BY cluster_id ORDER BY change_time DESC) = 1\n",
+        ") c\n",
         "  ON CAST(ag.parsedTags:ClusterId AS STRING) = c.cluster_id\n",
-        "LEFT JOIN system.compute.warehouses w\n",
+        "LEFT JOIN (\n",
+        "  SELECT * FROM system.compute.warehouses\n",
+        "  QUALIFY ROW_NUMBER() OVER (PARTITION BY warehouse_id ORDER BY change_time DESC) = 1\n",
+        ") w\n",
         "  ON CAST(ag.parsedTags:SqlEndpointId AS STRING) = w.warehouse_id"
       ],
       "parameters": [
