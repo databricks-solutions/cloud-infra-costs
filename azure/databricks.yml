@@ -38,6 +38,9 @@ variables:
   ingestion_date_depth:
     description: "Pipeline uses split_part to extract ingestion date (e.g. 202509081628) from file source_file_path"  
     default: 8
+  cost_column:
+    description: "Export column used as the gold price for the Actuals and Amortized pipelines. Default suits current EA and MCA exports; use cost for older exports that lack costInBillingCurrency"
+    default: costInBillingCurrency
   warehouse_id:
     description: "Id of SQL warehouse that the dashboard uses"
 
