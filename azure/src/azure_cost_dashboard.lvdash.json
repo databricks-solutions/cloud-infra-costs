@@ -566,7 +566,7 @@
           "position": {
             "x": 0,
             "y": 4,
-            "width": 3,
+            "width": 2,
             "height": 2
           }
         },
@@ -608,9 +608,80 @@
             }
           },
           "position": {
-            "x": 3,
+            "x": 2,
             "y": 4,
-            "width": 3,
+            "width": 2,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "cost-by-billing-currency",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ae7776ee",
+                  "fields": [
+                    {
+                      "name": "billingCurrency",
+                      "expression": "`billingCurrency`"
+                    },
+                    {
+                      "name": "sum(price)",
+                      "expression": "SUM(`price`)"
+                    }
+                  ],
+                  "cubeGroupingSets": {
+                    "sets": [
+                      {
+                        "fieldNames": [
+                          "billingCurrency"
+                        ]
+                      }
+                    ]
+                  },
+                  "disaggregated": false,
+                  "orders": [
+                    {
+                      "direction": "ASC",
+                      "expression": "`billingCurrency`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "pivot",
+              "encodings": {
+                "rows": [
+                  {
+                    "fieldName": "billingCurrency",
+                    "displayName": "Currency"
+                  }
+                ],
+                "cell": {
+                  "type": "multi-cell",
+                  "fields": [
+                    {
+                      "fieldName": "sum(price)",
+                      "cellType": "text",
+                      "displayName": "Cost"
+                    }
+                  ]
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Cost by billing currency"
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 4,
+            "width": 2,
             "height": 2
           }
         }

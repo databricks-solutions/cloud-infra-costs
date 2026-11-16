@@ -43,7 +43,7 @@ System Tables
 Each pipeline follows the medallion architecture:
 - **Bronze**: Raw ingestion via AutoLoader (`read_files`) with source file metadata.
 - **Silver**: Parsed dates, extracted billing period and ingestion date from file paths, and parsed JSON tags into a VARIANT column.
-- **Gold**: Deduplicated by billing period (keeps latest ingestion date using `RANK()` window function), `price` (the cost Azure Cost Management reports), `contracted_cost` (cost before commitment benefits), the pricing and benefit columns, and vendor tag extraction.
+- **Gold**: Deduplicated by billing period (keeps latest ingestion date using `RANK()` window function), `price` (the cost Azure Cost Management reports), `contracted_cost` (cost before commitment benefits), pricing columns (`quantity`, `unitPrice`, `effectivePrice`, `chargeType`, `pricingModel`, `productOrderId`, `billingCurrency`), and vendor tag extraction. Reservation and savings plan names (`reservationName`, `benefitName`) are available in the silver table.
 
 ### Cost Columns and Commitments (Reservations, Savings Plans, DBCU)
 
@@ -221,7 +221,7 @@ Navigate to the dashboard created and validate that data appears. The dashboard 
 ![Dashboard Screenshot](screenshots/AzureDashboardScreenshot.png?raw=true)
 
 The dashboard includes the following pages:
-- **Cost Overview** - Daily cost trends by service category, cost by subscription and resource group
+- **Cost Overview** - Daily cost trends by service category, cost by subscription and resource group, and cost by billing currency (more than one row means costs are in multiple currencies and shouldn't be added together)
 - **Compute TCO** - Total cost of ownership for Databricks clusters and SQL warehouses, joined to `system.compute.clusters` and `system.compute.warehouses`
 - **Cost by Tags** - Cost analysis by Azure resource tags with configurable time granularity
 - **ADI Costs** - Azure Databricks Integration (ADI) costs from `system.billing.usage` at list price, by provider, workspace, and serving endpoint. See the [ADI cost query](adi/README.md)
